@@ -53,6 +53,10 @@ public final class OptimizatorRuntime {
             initialize();
         }
 
+        if (!OptimizatorConfig.enabled) {
+            return;
+        }
+
         if (client.world == null || client.player == null) {
             return;
         }
@@ -194,7 +198,7 @@ public final class OptimizatorRuntime {
     }
 
     public static boolean allowParticle(boolean force) {
-        if (force || !OptimizatorConfig.particleLimiter) {
+        if (!OptimizatorConfig.enabled || force || !OptimizatorConfig.particleLimiter) {
             return true;
         }
 
@@ -220,3 +224,29 @@ public final class OptimizatorRuntime {
         return currentParticleBudget;
     }
 }
+
+
+    public static boolean shouldCullFarEntity(
+            net.minecraft.entity.Entity entity,
+            net.minecraft.util.math.Vec3d cameraPos
+    ) {
+        if (!OptimizatorConfig.enabled || !OptimizatorConfig.deepEntityCulling) {
+            return false;
+        }
+
+        if (entity == null || entity == MinecraftClient.getInstance().player
+                || entity.isSpectator()) {
+            return false;
+        }
+
+        boolean cheapEntity = entity instanceof net.minecraft.entity.ItemEntity
+                || entity instanceof net.minecraft.entity.ExperienceOrbEntity;
+
+        if (!cheapEntity) {
+            return false;
+        }
+
+        double distance = entity.squaredDistanceTo(cameraPos);
+        double limit = OptimizatorConfig.farEntityCullDistance;
+        return distance > limit * limit;
+    }
