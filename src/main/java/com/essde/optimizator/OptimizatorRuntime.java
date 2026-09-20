@@ -127,8 +127,12 @@ public final class OptimizatorRuntime {
     }
 
     private static void applyAdaptiveOptions(GameOptions options) {
+        int minimumRenderDistance = Math.min(
+                baseRenderDistance,
+                OptimizatorConfig.minRenderDistance
+        );
         int targetRenderDistance = Math.max(
-                OptimizatorConfig.minRenderDistance,
+                minimumRenderDistance,
                 baseRenderDistance - reductionLevel
         );
 
@@ -167,18 +171,21 @@ public final class OptimizatorRuntime {
     }
 
     private static void restoreUserOptions(GameOptions options) {
-        if (baseRenderDistance >= 0 && options.getViewDistance().getValue() != baseRenderDistance) {
+        if (baseRenderDistance >= 0
+                && options.getViewDistance().getValue() != baseRenderDistance) {
             options.getViewDistance().setValue(baseRenderDistance);
         }
         lastAppliedRenderDistance = baseRenderDistance;
 
         if (baseEntityDistance >= 0.0D
-                && Double.compare(options.getEntityDistanceScaling().getValue(), baseEntityDistance) != 0) {
+                && Double.compare(options.getEntityDistanceScaling().getValue(),
+                baseEntityDistance) != 0) {
             options.getEntityDistanceScaling().setValue(baseEntityDistance);
         }
         lastAppliedEntityDistance = baseEntityDistance;
 
-        if (baseCloudMode != null && options.getCloudRenderMode().getValue() != baseCloudMode) {
+        if (baseCloudMode != null
+                && options.getCloudRenderMode().getValue() != baseCloudMode) {
             options.getCloudRenderMode().setValue(baseCloudMode);
         }
         lastAppliedCloudMode = baseCloudMode;
