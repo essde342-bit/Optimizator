@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "optimizator",
+  "version": "${version}",
+  "name": "Optimizator",
+  "description": "Client-side performance optimization for Minecraft 1.21.4 Fabric.",
+  "authors": ["essde342-bit"],
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.essde.optimizator.OptimizatorClient"]
+  },
+  "mixins": ["optimizator.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.14",
+    "minecraft": "1.21.4",
+    "java": ">=21",
+    "fabric-api": ">=0.119.2"
+  }
+}
