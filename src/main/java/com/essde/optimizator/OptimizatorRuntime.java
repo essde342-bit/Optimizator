@@ -54,6 +54,9 @@ public final class OptimizatorRuntime {
         }
 
         if (!OptimizatorConfig.enabled) {
+            if (client.world != null && client.player != null) {
+                restoreUserOptions(client.options);
+            }
             return;
         }
 
