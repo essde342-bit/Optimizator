@@ -12,7 +12,7 @@ The project uses a conservative rule: do not alter world simulation, networking,
 - A lightweight per-second particle budget for non-forced particles.
 - Hysteresis so settings do not bounce every frame.
 - Persistent configuration in config/optimizator.properties.
-- No native libraries and no GPU-specific code, keeping the mod portable across Java/OpenGL stacks.
+- Internal chunk GPU-upload budgeting to reduce render-thread upload spikes.
 
 ## Default profile
 
