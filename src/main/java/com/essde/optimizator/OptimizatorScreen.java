@@ -14,7 +14,6 @@ public final class OptimizatorScreen extends Screen {
     private ButtonWidget entityButton;
     private ButtonWidget shadowButton;
     private ButtonWidget uploadButton;
-    private ButtonWidget particlesButton;
 
     public OptimizatorScreen(Screen parent) {
         super(Text.literal("Optimizator"));
@@ -24,7 +23,7 @@ public final class OptimizatorScreen extends Screen {
     @Override
     protected void init() {
         int center = this.width / 2;
-        int buttonWidth = 220;
+        int buttonWidth = Math.min(220, this.width - 20);
         int left = center - buttonWidth / 2;
         int y = 70;
 
@@ -51,12 +50,14 @@ public final class OptimizatorScreen extends Screen {
         this.uploadButton = addDrawableChild(toggleButton(
                 left, y, "Chunk upload budget", () -> OptimizatorConfig.chunkUploadBudget,
                 value -> OptimizatorConfig.chunkUploadBudget = value));
-        y += 24;
+        y += 28;
 
-        this.particlesButton = addDrawableChild(toggleButton(
-                left, y, "Particle limiter", () -> OptimizatorConfig.particleLimiter,
-                value -> OptimizatorConfig.particleLimiter = value));
-        y += 32;
+        addDrawableChild(ButtonWidget.builder(
+                        Text.literal("Particle settings"),
+                        button -> this.client.setScreen(new ParticleSettingsScreen(this)))
+                .dimensions(left, y, buttonWidth, 20)
+                .build());
+        y += 28;
 
         addDrawableChild(new SliderWidget(
                 left, y, buttonWidth, 20,
@@ -173,8 +174,6 @@ public final class OptimizatorScreen extends Screen {
                 Text.literal("Fast entity shadows: " + onOff(OptimizatorConfig.fastEntityShadows)));
         this.uploadButton.setMessage(
                 Text.literal("Chunk upload budget: " + onOff(OptimizatorConfig.chunkUploadBudget)));
-        this.particlesButton.setMessage(
-                Text.literal("Particle limiter: " + onOff(OptimizatorConfig.particleLimiter)));
     }
 
     private static String onOff(boolean value) {
@@ -189,7 +188,7 @@ public final class OptimizatorScreen extends Screen {
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context, mouseX, mouseY, delta);
 
-        int panelWidth = 270;
+        int panelWidth = Math.min(270, this.width - 10);
         int panelLeft = (this.width - panelWidth) / 2;
         int panelTop = 48;
         int panelBottom = Math.min(this.height - 16, panelTop + 350);
