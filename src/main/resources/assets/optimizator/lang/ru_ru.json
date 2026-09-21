@@ -86,5 +86,6 @@
   "profiler.stat.entities": "Существа: %s",
   "profiler.stat.particles": "Частицы: %s",
   "profiler.stat.chunk_upload": "Загрузка чанков: %s",
-  "profiler.stat.top": "Главное узкое место: %s"
+  "profiler.stat.top": "Главное узкое место: %s",
+  "particles.option.all_off": "Все частицы: %s"
 }
