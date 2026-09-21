@@ -298,7 +298,15 @@ public final class OptimizatorRuntime {
             double y,
             double z
     ) {
-        if (!OptimizatorConfig.enabled || parameters == null || force) {
+        if (parameters == null) {
+            return true;
+        }
+
+        if (OptimizatorConfig.allParticlesDisabled) {
+            return false;
+        }
+
+        if (!OptimizatorConfig.enabled || force) {
             return true;
         }
 
