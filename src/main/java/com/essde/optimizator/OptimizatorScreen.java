@@ -59,6 +59,13 @@ public final class OptimizatorScreen extends Screen {
                 .build());
         y += 28;
 
+        addDrawableChild(ButtonWidget.builder(
+                        Text.literal("Performance profiler"),
+                        button -> this.client.setScreen(new ProfilerScreen(this)))
+                .dimensions(left, y, buttonWidth, 20)
+                .build());
+        y += 28;
+
         addDrawableChild(new SliderWidget(
                 left, y, buttonWidth, 20,
                 Text.literal("Far entity cull: " + OptimizatorConfig.farEntityCullDistance + "m"),
