@@ -31,25 +31,26 @@ public final class OptimizatorConfig {
 
     /**
      * 0 = ALL, 1 = DECREASED, 2 = MINIMAL.
-     * This is intentionally kept independent from the vanilla option so the
-     * optimizer can apply the same idea before a Particle instance is allocated.
+     * The default is ALL so Optimizator does not silently reduce visible
+     * particle density compared with the normal Minecraft setting.
      */
-    public static int particleQuality = 1;
+    public static int particleQuality = 0;
 
     public static int minRenderDistance = 5;
     public static double minEntityDistance = 0.35D;
     public static int fpsFloor = 35;
-    public static int particleBudget = 1200;
+
+    /**
+     * Large enough to stay visually equivalent in normal scenes.
+     * The adaptive controller can lower the effective budget under sustained load.
+     */
+    public static int particleBudget = 10000;
 
     public static int farEntityCullDistance = 48;
     public static int particleCullDistance = 128;
     public static int maxChunkUploadsPerFrame = 6;
     public static int chunkUploadBudgetMicros = 2500;
 
-    /**
-     * Exact particle ids, for example minecraft:smoke.
-     * Wildcards are supported at the end: minecraft:*
-     */
     public static final Set<String> particleDisabledTypes = new LinkedHashSet<>();
     public static final Set<String> particleReducedTypes = new LinkedHashSet<>();
 
@@ -83,30 +84,30 @@ public final class OptimizatorConfig {
             disableCloudsUnderLoad =
                     getBoolean(properties, "disable_clouds_under_load", disableCloudsUnderLoad);
 
-            particleQuality = clamp(
-                    getInt(properties, "particle_quality", particleQuality), 0, 2);
-            minRenderDistance = clamp(
-                    getInt(properties, "min_render_distance", minRenderDistance), 4, 32);
-            minEntityDistance = clamp(
-                    getDouble(properties, "min_entity_distance", minEntityDistance),
-                    0.15D, 1.0D);
-            fpsFloor = clamp(
-                    getInt(properties, "fps_floor", fpsFloor), 20, 120);
-            particleBudget = clamp(
-                    getInt(properties, "particle_budget", particleBudget), 100, 10000);
+            particleQuality =
+                    clamp(getInt(properties, "particle_quality", particleQuality), 0, 2);
+            minRenderDistance =
+                    clamp(getInt(properties, "min_render_distance", minRenderDistance), 4, 32);
+            minEntityDistance =
+                    clamp(getDouble(properties, "min_entity_distance", minEntityDistance),
+                            0.15D, 1.0D);
+            fpsFloor =
+                    clamp(getInt(properties, "fps_floor", fpsFloor), 20, 120);
+            particleBudget =
+                    clamp(getInt(properties, "particle_budget", particleBudget), 100, 10000);
 
-            farEntityCullDistance = clamp(
-                    getInt(properties, "far_entity_cull_distance", farEntityCullDistance),
-                    16, 128);
-            particleCullDistance = clamp(
-                    getInt(properties, "particle_cull_distance", particleCullDistance),
-                    16, 256);
-            maxChunkUploadsPerFrame = clamp(
-                    getInt(properties, "max_chunk_uploads_per_frame", maxChunkUploadsPerFrame),
-                    1, 32);
-            chunkUploadBudgetMicros = clamp(
-                    getInt(properties, "chunk_upload_budget_micros", chunkUploadBudgetMicros),
-                    250, 10000);
+            farEntityCullDistance =
+                    clamp(getInt(properties, "far_entity_cull_distance", farEntityCullDistance),
+                            16, 128);
+            particleCullDistance =
+                    clamp(getInt(properties, "particle_cull_distance", particleCullDistance),
+                            16, 256);
+            maxChunkUploadsPerFrame =
+                    clamp(getInt(properties, "max_chunk_uploads_per_frame",
+                            maxChunkUploadsPerFrame), 1, 32);
+            chunkUploadBudgetMicros =
+                    clamp(getInt(properties, "chunk_upload_budget_micros",
+                            chunkUploadBudgetMicros), 250, 10000);
 
             parseTypeSet(properties.getProperty("particle_disabled", ""), particleDisabledTypes);
             parseTypeSet(properties.getProperty("particle_reduced", ""), particleReducedTypes);
@@ -137,10 +138,8 @@ public final class OptimizatorConfig {
                     "disable_clouds_under_load", Boolean.toString(disableCloudsUnderLoad));
 
             properties.setProperty("particle_quality", Integer.toString(particleQuality));
-            properties.setProperty(
-                    "min_render_distance", Integer.toString(minRenderDistance));
-            properties.setProperty(
-                    "min_entity_distance", Double.toString(minEntityDistance));
+            properties.setProperty("min_render_distance", Integer.toString(minRenderDistance));
+            properties.setProperty("min_entity_distance", Double.toString(minEntityDistance));
             properties.setProperty("fps_floor", Integer.toString(fpsFloor));
             properties.setProperty("particle_budget", Integer.toString(particleBudget));
 
@@ -178,11 +177,11 @@ public final class OptimizatorConfig {
         chunkUploadBudget = true;
         disableCloudsUnderLoad = true;
 
-        particleQuality = 1;
+        particleQuality = 0;
         minRenderDistance = 5;
         minEntityDistance = 0.35D;
         fpsFloor = 35;
-        particleBudget = 1200;
+        particleBudget = 10000;
 
         farEntityCullDistance = 48;
         particleCullDistance = 128;
@@ -233,7 +232,8 @@ public final class OptimizatorConfig {
                 .forEach(s -> target.add(s.toLowerCase(Locale.ROOT)));
     }
 
-    private static boolean getBoolean(Properties properties, String key, boolean fallback) {
+    private static boolean getBoolean(
+            Properties properties, String key, boolean fallback) {
         String value = properties.getProperty(key);
         return value == null ? fallback : Boolean.parseBoolean(value);
     }
@@ -247,7 +247,8 @@ public final class OptimizatorConfig {
         }
     }
 
-    private static double getDouble(Properties properties, String key, double fallback) {
+    private static double getDouble(
+            Properties properties, String key, double fallback) {
         try {
             return Double.parseDouble(
                     properties.getProperty(key, Double.toString(fallback)).trim());
