@@ -24,7 +24,7 @@ public final class OptimizatorConfig {
     public static boolean adaptive = true;
     public static boolean particleLimiter = true;
     public static boolean particleCulling = false;
-    public static boolean deepEntityCulling = true;
+    public static boolean deepEntityCulling = false;
     public static boolean fastEntityShadows = false;
     public static boolean chunkUploadBudget = true;
     public static boolean disableCloudsUnderLoad = true;
@@ -176,7 +176,7 @@ public final class OptimizatorConfig {
         adaptive = true;
         particleLimiter = true;
         particleCulling = false;
-        deepEntityCulling = true;
+        deepEntityCulling = false;
         fastEntityShadows = false;
         chunkUploadBudget = true;
         disableCloudsUnderLoad = true;
