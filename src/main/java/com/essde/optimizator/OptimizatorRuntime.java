@@ -4,14 +4,20 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.particle.ParticleEffect;
+import net.minecraft.particle.ParticleType;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.math.Vec3d;
+
+import java.util.IdentityHashMap;
+import java.util.Map;
 
 public final class OptimizatorRuntime {
     private static final int CONTROL_INTERVAL_TICKS = 40;
     private static final int REQUIRED_LOW_SAMPLES = 2;
     private static final int REQUIRED_HIGH_SAMPLES = 4;
     private static final int MAX_REDUCTION = 8;
+    private static final Map<ParticleType<?>, String> PARTICLE_TYPE_IDS =
+            new IdentityHashMap<>();
 
     private static boolean initialized;
     private static int controlTicks;
@@ -63,6 +69,7 @@ public final class OptimizatorRuntime {
         particleCameraY = 0.0D;
         particleCameraZ = 0.0D;
         currentParticleBudget = OptimizatorConfig.particleBudget;
+        PARTICLE_TYPE_IDS.clear();
     }
 
     public static void tick(MinecraftClient client) {
@@ -314,7 +321,13 @@ public final class OptimizatorRuntime {
         int typeHash = parameters.getType().hashCode();
         if (!OptimizatorConfig.particleDisabledTypes.isEmpty()
                 || !OptimizatorConfig.particleReducedTypes.isEmpty()) {
-            String typeId = Registries.PARTICLE_TYPE.getId(parameters.getType()).toString();
+            ParticleType<?> particleType = parameters.getType();
+            String typeId = PARTICLE_TYPE_IDS.get(particleType);
+            if (typeId == null) {
+                net.minecraft.util.Identifier id = Registries.PARTICLE_TYPE.getId(particleType);
+                typeId = id == null ? "" : id.toString();
+                PARTICLE_TYPE_IDS.put(particleType, typeId);
+            }
             typeMode = OptimizatorConfig.getParticleMode(typeId);
             if (typeMode == 2) {
                 return false;
