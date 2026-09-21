@@ -18,7 +18,7 @@ public abstract class EntityRenderDispatcherMixin {
             at = @At("HEAD"),
             cancellable = true
     )
-    private static void optimizator$skipEntityShadows(
+    private static void optimizator$cullDistantEntityShadow(
             MatrixStack matrices,
             VertexConsumerProvider vertexConsumers,
             EntityRenderState renderState,
@@ -28,7 +28,14 @@ public abstract class EntityRenderDispatcherMixin {
             float radius,
             CallbackInfo callbackInfo
     ) {
-        if (OptimizatorConfig.enabled && OptimizatorConfig.fastEntityShadows) {
+        if (!OptimizatorConfig.enabled
+                || !OptimizatorConfig.fastEntityShadows
+                || renderState == null) {
+            return;
+        }
+
+        double maxDistance = OptimizatorConfig.entityShadowDistance;
+        if (renderState.squaredDistanceToCamera > maxDistance * maxDistance) {
             callbackInfo.cancel();
         }
     }
