@@ -2,23 +2,16 @@ package com.essde.optimizator.mixin;
 
 import com.essde.optimizator.OptimizatorScreen;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.Drawable;
-import net.minecraft.client.gui.Element;
-import net.minecraft.client.gui.Selectable;
 import net.minecraft.client.gui.screen.GameMenuScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(GameMenuScreen.class)
 public abstract class GameMenuScreenMixin {
-    @Shadow
-    protected abstract <T extends Element & Drawable & Selectable> T addDrawableChild(T drawable);
-
     @Inject(method = "init", at = @At("TAIL"))
     private void optimizator$addButton(CallbackInfo callbackInfo) {
         MinecraftClient client = MinecraftClient.getInstance();
@@ -30,7 +23,7 @@ public abstract class GameMenuScreenMixin {
                 client.getWindow().getScaledHeight() / 4 + 220
         );
 
-        this.addDrawableChild(ButtonWidget.builder(
+        ((ScreenAccessor) (Object) this).optimizator$addDrawableChild(ButtonWidget.builder(
                         Text.literal("Optimizator"),
                         button -> client.setScreen(
                                 new OptimizatorScreen((GameMenuScreen) (Object) this)))
