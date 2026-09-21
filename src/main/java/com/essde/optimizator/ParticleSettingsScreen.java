@@ -73,8 +73,23 @@ public final class ParticleSettingsScreen extends Screen {
                         OptimizatorConfig.save();
                     }).dimensions(left, rowY(2), width, 20).build());
 
+            addDrawableChild(ButtonWidget.builder(
+                    Text.translatable("particles.option.all_off",
+                            status(OptimizatorConfig.allParticlesDisabled)),
+                    button -> {
+                        OptimizatorConfig.allParticlesDisabled =
+                                !OptimizatorConfig.allParticlesDisabled;
+                        if (OptimizatorConfig.allParticlesDisabled) {
+                            OptimizatorConfig.enabled = true;
+                        }
+                        button.setMessage(Text.translatable(
+                                "particles.option.all_off",
+                                status(OptimizatorConfig.allParticlesDisabled)));
+                        OptimizatorConfig.save();
+                    }).dimensions(left, rowY(3), width, 20).build());
+
             addDrawableChild(new SliderWidget(
-                    left, rowY(3), width, 20,
+                    left, rowY(4), width, 20,
                     Text.translatable("particles.option.budget",
                             OptimizatorConfig.particleBudget),
                     (OptimizatorConfig.particleBudget - 100D) / 9900D
@@ -95,7 +110,7 @@ public final class ParticleSettingsScreen extends Screen {
             });
 
             addDrawableChild(new SliderWidget(
-                    left, rowY(4), width, 20,
+                    left, rowY(5), width, 20,
                     Text.translatable("particles.option.distance",
                             OptimizatorConfig.particleCullDistance),
                     (OptimizatorConfig.particleCullDistance - 16D) / 240D
@@ -147,6 +162,7 @@ public final class ParticleSettingsScreen extends Screen {
                     button -> {
                         OptimizatorConfig.particleLimiter = false;
                         OptimizatorConfig.particleCulling = false;
+                        OptimizatorConfig.allParticlesDisabled = false;
                         OptimizatorConfig.particleQuality = 0;
                         OptimizatorConfig.particleBudget = 10000;
                         OptimizatorConfig.particleCullDistance = 128;
