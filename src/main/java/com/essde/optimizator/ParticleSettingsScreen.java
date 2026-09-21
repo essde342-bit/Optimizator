@@ -30,6 +30,9 @@ public final class ParticleSettingsScreen extends Screen {
                         button -> {
                             OptimizatorConfig.particleQuality =
                                     (OptimizatorConfig.particleQuality + 1) % 3;
+                            if (OptimizatorConfig.particleQuality != 0) {
+                                OptimizatorConfig.enabled = true;
+                            }
                             button.setMessage(Text.literal(qualityLabel()));
                             OptimizatorConfig.save();
                         })
@@ -41,6 +44,9 @@ public final class ParticleSettingsScreen extends Screen {
                         Text.literal("Particle limiter: " + onOff(OptimizatorConfig.particleLimiter)),
                         button -> {
                             OptimizatorConfig.particleLimiter = !OptimizatorConfig.particleLimiter;
+                            if (OptimizatorConfig.particleLimiter) {
+                                OptimizatorConfig.enabled = true;
+                            }
                             button.setMessage(Text.literal(
                                     "Particle limiter: " + onOff(OptimizatorConfig.particleLimiter)));
                             OptimizatorConfig.save();
@@ -53,6 +59,9 @@ public final class ParticleSettingsScreen extends Screen {
                         Text.literal("Distance culling: " + onOff(OptimizatorConfig.particleCulling)),
                         button -> {
                             OptimizatorConfig.particleCulling = !OptimizatorConfig.particleCulling;
+                            if (OptimizatorConfig.particleCulling) {
+                                OptimizatorConfig.enabled = true;
+                            }
                             button.setMessage(Text.literal(
                                     "Distance culling: " + onOff(OptimizatorConfig.particleCulling)));
                             OptimizatorConfig.save();
@@ -76,6 +85,7 @@ public final class ParticleSettingsScreen extends Screen {
             protected void applyValue() {
                 OptimizatorConfig.particleBudget =
                         100 + (int) Math.round(this.value * 9900D);
+                OptimizatorConfig.enabled = true;
                 OptimizatorConfig.save();
             }
         });
@@ -96,6 +106,7 @@ public final class ParticleSettingsScreen extends Screen {
             protected void applyValue() {
                 OptimizatorConfig.particleCullDistance =
                         16 + (int) Math.round(this.value * 240D);
+                OptimizatorConfig.enabled = true;
                 OptimizatorConfig.save();
             }
         });
@@ -166,6 +177,11 @@ public final class ParticleSettingsScreen extends Screen {
                     OptimizatorConfig.particleReducedTypes.add(normalized);
                 }
             }
+        }
+
+        if (!OptimizatorConfig.particleDisabledTypes.isEmpty()
+                || !OptimizatorConfig.particleReducedTypes.isEmpty()) {
+            OptimizatorConfig.enabled = true;
         }
 
         OptimizatorConfig.save();
