@@ -20,6 +20,7 @@ public final class OptimizatorRuntime {
     private static int cloudLowSamples;
     private static int cloudHighSamples;
     private static int reductionLevel;
+    private static boolean controlsVanillaOptions;
 
     private static int baseRenderDistance = -1;
     private static double baseEntityDistance = -1.0D;
@@ -48,6 +49,7 @@ public final class OptimizatorRuntime {
         cloudLowSamples = 0;
         cloudHighSamples = 0;
         reductionLevel = 0;
+        controlsVanillaOptions = false;
         baseRenderDistance = -1;
         baseEntityDistance = -1.0D;
         baseCloudMode = null;
@@ -69,7 +71,7 @@ public final class OptimizatorRuntime {
         }
 
         if (!OptimizatorConfig.enabled) {
-            if (client.world != null && client.player != null) {
+            if (controlsVanillaOptions && client.world != null && client.player != null) {
                 restoreUserOptions(client.options);
             }
             return;
@@ -95,9 +97,13 @@ public final class OptimizatorRuntime {
         rememberUserBaseline(options);
 
         if (!OptimizatorConfig.adaptive && !OptimizatorConfig.disableCloudsUnderLoad) {
-            restoreUserOptions(options);
+            if (controlsVanillaOptions) {
+                restoreUserOptions(options);
+            }
             return;
         }
+
+        controlsVanillaOptions = true;
 
         controlTicks++;
         if (controlTicks < CONTROL_INTERVAL_TICKS) {
@@ -264,6 +270,12 @@ public final class OptimizatorRuntime {
         lastAppliedCloudMode = baseCloudMode;
         currentParticleBudget = OptimizatorConfig.particleBudget;
         reductionLevel = 0;
+        controlTicks = 0;
+        lowSamples = 0;
+        highSamples = 0;
+        cloudLowSamples = 0;
+        cloudHighSamples = 0;
+        controlsVanillaOptions = false;
     }
 
     /**
