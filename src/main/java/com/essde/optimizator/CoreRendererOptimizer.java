@@ -1,6 +1,7 @@
 package com.essde.optimizator;
 
 import it.unimi.dsi.fastutil.longs.Long2BooleanOpenHashMap;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.WorldRenderer;
@@ -37,7 +38,8 @@ public final class CoreRendererOptimizer {
             boolean hasForcedFrustum,
             boolean spectator
     ) {
-        if (hasForcedFrustum || spectator || camera == null || !camera.isReady()) {
+        if (FabricLoader.getInstance().isModLoaded("sodium")
+                || hasForcedFrustum || spectator || camera == null || !camera.isReady()) {
             terrainCacheMisses++;
             return false;
         }
@@ -89,6 +91,10 @@ public final class CoreRendererOptimizer {
     }
 
     public static boolean allowChunkRebuild(int x, int y, int z, boolean important) {
+        if (FabricLoader.getInstance().isModLoaded("sodium")) {
+            return true;
+        }
+
         long key = pack(x, y, z);
         if (!SCHEDULED_REBUILDS.containsKey(key)) {
             SCHEDULED_REBUILDS.put(key, important);
