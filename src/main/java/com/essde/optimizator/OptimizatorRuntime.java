@@ -17,6 +17,8 @@ public final class OptimizatorRuntime {
     private static int controlTicks;
     private static int lowSamples;
     private static int highSamples;
+    private static int cloudLowSamples;
+    private static int cloudHighSamples;
     private static int reductionLevel;
 
     private static int baseRenderDistance = -1;
@@ -43,6 +45,8 @@ public final class OptimizatorRuntime {
         controlTicks = 0;
         lowSamples = 0;
         highSamples = 0;
+        cloudLowSamples = 0;
+        cloudHighSamples = 0;
         reductionLevel = 0;
         baseRenderDistance = -1;
         baseEntityDistance = -1.0D;
@@ -90,7 +94,7 @@ public final class OptimizatorRuntime {
         GameOptions options = client.options;
         rememberUserBaseline(options);
 
-        if (!OptimizatorConfig.adaptive) {
+        if (!OptimizatorConfig.adaptive && !OptimizatorConfig.disableCloudsUnderLoad) {
             restoreUserOptions(options);
             return;
         }
@@ -103,6 +107,26 @@ public final class OptimizatorRuntime {
 
         int fps = Math.max(client.getCurrentFps(), 1);
 
+        if (OptimizatorConfig.adaptive) {
+            updateAdaptiveController(fps);
+            applyAdaptiveOptions(options);
+        } else {
+            lowSamples = 0;
+            highSamples = 0;
+            reductionLevel = 0;
+            currentParticleBudget = OptimizatorConfig.particleBudget;
+        }
+
+        if (OptimizatorConfig.disableCloudsUnderLoad) {
+            updateCloudController(options, fps);
+        } else if (baseCloudMode != null
+                && options.getCloudRenderMode().getValue() != baseCloudMode) {
+            options.getCloudRenderMode().setValue(baseCloudMode);
+            lastAppliedCloudMode = baseCloudMode;
+        }
+    }
+
+    private static void updateAdaptiveController(int fps) {
         if (fps < OptimizatorConfig.fpsFloor) {
             lowSamples++;
             highSamples = 0;
@@ -123,8 +147,36 @@ public final class OptimizatorRuntime {
             lowSamples = 0;
             highSamples = 0;
         }
+    }
 
-        applyAdaptiveOptions(options);
+    private static void updateCloudController(GameOptions options, int fps) {
+        if (fps < OptimizatorConfig.fpsFloor) {
+            cloudLowSamples++;
+            cloudHighSamples = 0;
+
+            if (cloudLowSamples >= REQUIRED_LOW_SAMPLES) {
+                cloudLowSamples = 0;
+                if (options.getCloudRenderMode().getValue() != CloudRenderMode.OFF) {
+                    options.getCloudRenderMode().setValue(CloudRenderMode.OFF);
+                    lastAppliedCloudMode = CloudRenderMode.OFF;
+                }
+            }
+        } else if (fps >= OptimizatorConfig.fpsFloor + 15) {
+            cloudHighSamples++;
+            cloudLowSamples = 0;
+
+            if (cloudHighSamples >= REQUIRED_HIGH_SAMPLES) {
+                cloudHighSamples = 0;
+                if (baseCloudMode != null
+                        && options.getCloudRenderMode().getValue() != baseCloudMode) {
+                    options.getCloudRenderMode().setValue(baseCloudMode);
+                    lastAppliedCloudMode = baseCloudMode;
+                }
+            }
+        } else {
+            cloudLowSamples = 0;
+            cloudHighSamples = 0;
+        }
     }
 
     private static void rememberUserBaseline(GameOptions options) {
@@ -183,15 +235,6 @@ public final class OptimizatorRuntime {
 
         currentParticleBudget = calculateParticleBudget(reductionLevel);
 
-        if (OptimizatorConfig.disableCloudsUnderLoad) {
-            CloudRenderMode targetCloudMode =
-                    reductionLevel >= 2 ? CloudRenderMode.OFF : baseCloudMode;
-
-            if (targetCloudMode != options.getCloudRenderMode().getValue()) {
-                options.getCloudRenderMode().setValue(targetCloudMode);
-            }
-            lastAppliedCloudMode = targetCloudMode;
-        }
     }
 
     private static int calculateParticleBudget(int level) {
