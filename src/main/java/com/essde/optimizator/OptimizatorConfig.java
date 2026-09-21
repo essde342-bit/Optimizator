@@ -19,7 +19,7 @@ public final class OptimizatorConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger("Optimizator");
     private static final Path CONFIG_FILE =
             FabricLoader.getInstance().getConfigDir().resolve("optimizator.properties");
-    private static final int CONFIG_VERSION = 3;
+    private static final int CONFIG_VERSION = 4;
 
     // Master switch is OFF by default. Every optimization feature is also OFF
     // by default so the first launch never changes rendering behaviour silently.
@@ -74,9 +74,11 @@ public final class OptimizatorConfig {
             properties.load(reader);
 
             int version = getInt(properties, "config_version", 0);
-            if (version < CONFIG_VERSION) {
-                LOGGER.info("Migrating Optimizator config from version {} to {} without resetting user settings.",
-                        version, CONFIG_VERSION);
+            boolean safetyResetFeatures = version < CONFIG_VERSION;
+
+            if (safetyResetFeatures) {
+                LOGGER.info("Migrating Optimizator config to version {}. Feature switches will be disabled once; tuning values are preserved.",
+                        CONFIG_VERSION);
             }
 
             enabled = getBoolean(properties, "enabled", enabled);
@@ -123,6 +125,23 @@ public final class OptimizatorConfig {
 
             parseTypeSet(properties.getProperty("particle_disabled", ""), particleDisabledTypes);
             parseTypeSet(properties.getProperty("particle_reduced", ""), particleReducedTypes);
+
+            if (safetyResetFeatures) {
+                enabled = false;
+                adaptive = false;
+                particleLimiter = false;
+                particleCulling = false;
+                allParticlesDisabled = false;
+                deepEntityCulling = false;
+                fastEntityShadows = false;
+                chunkUploadBudget = false;
+                disableCloudsUnderLoad = false;
+                profilerEnabled = false;
+                profilerOverlay = false;
+                particleQuality = 0;
+                cullItemEntities = false;
+                cullExperienceOrbs = false;
+            }
         } catch (IOException | RuntimeException exception) {
             LOGGER.warn("Could not read config; using safe defaults.", exception);
             resetDefaults();
