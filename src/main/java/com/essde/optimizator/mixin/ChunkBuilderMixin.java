@@ -1,6 +1,7 @@
 package com.essde.optimizator.mixin;
 
 import com.essde.optimizator.OptimizatorConfig;
+import com.essde.optimizator.PerformanceProfiler;
 import net.minecraft.client.render.chunk.ChunkBuilder;
 import java.util.Queue;
 import org.spongepowered.asm.mixin.Final;
