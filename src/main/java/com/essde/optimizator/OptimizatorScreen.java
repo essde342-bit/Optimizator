@@ -209,6 +209,13 @@ public final class OptimizatorScreen extends Screen {
                         button -> {
                             boolean next = !getter.getAsBoolean();
                             setter.accept(next);
+                            if (next && !label.equals("Master switch")) {
+                                OptimizatorConfig.enabled = true;
+                                if (this.enabledButton != null) {
+                                    this.enabledButton.setMessage(
+                                            Text.literal("Master switch: ON"));
+                                }
+                            }
                             button.setMessage(Text.literal(
                                     label + ": " + onOff(next)));
                             OptimizatorConfig.save();
