@@ -19,6 +19,8 @@ public final class OptimizatorScreen extends Screen {
     private ButtonWidget profilerButton;
     private ButtonWidget overlayButton;
     private ButtonWidget entityButton;
+    private ButtonWidget itemCullButton;
+    private ButtonWidget xpCullButton;
     private ButtonWidget shadowButton;
     private ButtonWidget uploadButton;
     private ButtonWidget cloudButton;
@@ -79,6 +81,18 @@ public final class OptimizatorScreen extends Screen {
                     value -> OptimizatorConfig.deepEntityCulling = value));
             y += 24;
 
+            this.itemCullButton = addDrawableChild(toggleButton(
+                    left, y, "Cull dropped items",
+                    () -> OptimizatorConfig.cullItemEntities,
+                    value -> OptimizatorConfig.cullItemEntities = value));
+            y += 24;
+
+            this.xpCullButton = addDrawableChild(toggleButton(
+                    left, y, "Cull XP orbs",
+                    () -> OptimizatorConfig.cullExperienceOrbs,
+                    value -> OptimizatorConfig.cullExperienceOrbs = value));
+            y += 24;
+
             addDrawableChild(intSlider(
                     left, y, buttonWidth,
                     "Far entity cull",
@@ -87,10 +101,17 @@ public final class OptimizatorScreen extends Screen {
             y += 25;
 
             this.shadowButton = addDrawableChild(toggleButton(
-                    left, y, "Fast entity shadows",
+                    left, y, "Entity shadow culling",
                     () -> OptimizatorConfig.fastEntityShadows,
                     value -> OptimizatorConfig.fastEntityShadows = value));
             y += 24;
+
+            addDrawableChild(intSlider(
+                    left, y, buttonWidth,
+                    "Shadow render distance",
+                    OptimizatorConfig.entityShadowDistance, 8, 256,
+                    value -> OptimizatorConfig.entityShadowDistance = value));
+            y += 25;
 
             addDrawableChild(intSlider(
                     left, y, buttonWidth,
