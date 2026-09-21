@@ -28,6 +28,8 @@ public final class OptimizatorConfig {
     public static boolean fastEntityShadows = false;
     public static boolean chunkUploadBudget = true;
     public static boolean disableCloudsUnderLoad = true;
+    public static boolean profilerEnabled = true;
+    public static boolean profilerOverlay = false;
 
     /**
      * 0 = ALL, 1 = DECREASED, 2 = MINIMAL.
@@ -136,6 +138,8 @@ public final class OptimizatorConfig {
             properties.setProperty("chunk_upload_budget", Boolean.toString(chunkUploadBudget));
             properties.setProperty(
                     "disable_clouds_under_load", Boolean.toString(disableCloudsUnderLoad));
+            properties.setProperty("profiler_enabled", Boolean.toString(profilerEnabled));
+            properties.setProperty("profiler_overlay", Boolean.toString(profilerOverlay));
 
             properties.setProperty("particle_quality", Integer.toString(particleQuality));
             properties.setProperty("min_render_distance", Integer.toString(minRenderDistance));
@@ -176,6 +180,8 @@ public final class OptimizatorConfig {
         fastEntityShadows = false;
         chunkUploadBudget = true;
         disableCloudsUnderLoad = true;
+        profilerEnabled = true;
+        profilerOverlay = false;
 
         particleQuality = 0;
         minRenderDistance = 5;
