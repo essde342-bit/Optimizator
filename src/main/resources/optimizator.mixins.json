@@ -12,6 +12,7 @@
     "MinecraftClientProfilerMixin",
     "WorldRendererProfilerMixin",
     "ParticleManagerProfilerMixin",
+    "OptimizatorOverlayMixin",
     "ScreenAccessor"
   ],
   "injectors": {
