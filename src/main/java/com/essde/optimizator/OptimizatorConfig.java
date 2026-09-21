@@ -46,6 +46,9 @@ public final class OptimizatorConfig {
     public static int particleBudget = 10000;
 
     public static int farEntityCullDistance = 48;
+    public static boolean cullItemEntities = true;
+    public static boolean cullExperienceOrbs = true;
+    public static int entityShadowDistance = 64;
     public static int particleCullDistance = 128;
     public static int maxChunkUploadsPerFrame = 6;
     public static int chunkUploadBudgetMicros = 2500;
@@ -103,6 +106,10 @@ public final class OptimizatorConfig {
             farEntityCullDistance =
                     clamp(getInt(properties, "far_entity_cull_distance", farEntityCullDistance),
                             16, 128);
+            cullItemEntities = getBoolean(properties, "cull_item_entities", cullItemEntities);
+            cullExperienceOrbs = getBoolean(properties, "cull_experience_orbs", cullExperienceOrbs);
+            entityShadowDistance = clamp(
+                    getInt(properties, "entity_shadow_distance", entityShadowDistance), 8, 256);
             particleCullDistance =
                     clamp(getInt(properties, "particle_cull_distance", particleCullDistance),
                             16, 256);
@@ -152,6 +159,9 @@ public final class OptimizatorConfig {
 
             properties.setProperty(
                     "far_entity_cull_distance", Integer.toString(farEntityCullDistance));
+            properties.setProperty("cull_item_entities", Boolean.toString(cullItemEntities));
+            properties.setProperty("cull_experience_orbs", Boolean.toString(cullExperienceOrbs));
+            properties.setProperty("entity_shadow_distance", Integer.toString(entityShadowDistance));
             properties.setProperty(
                     "particle_cull_distance", Integer.toString(particleCullDistance));
             properties.setProperty(
@@ -193,6 +203,9 @@ public final class OptimizatorConfig {
         particleBudget = 10000;
 
         farEntityCullDistance = 48;
+        cullItemEntities = true;
+        cullExperienceOrbs = true;
+        entityShadowDistance = 64;
         particleCullDistance = 128;
         maxChunkUploadsPerFrame = 6;
         chunkUploadBudgetMicros = 2500;
