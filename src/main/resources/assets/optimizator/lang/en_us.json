@@ -86,5 +86,6 @@
   "profiler.stat.entities": "Entities: %s",
   "profiler.stat.particles": "Particles: %s",
   "profiler.stat.chunk_upload": "Chunk upload: %s",
-  "profiler.stat.top": "Top bottleneck: %s"
+  "profiler.stat.top": "Top bottleneck: %s",
+  "particles.option.all_off": "All particles: %s"
 }
