@@ -108,10 +108,12 @@ public final class PerformanceProfiler {
     }
 
     public static void recordParticleCreated() {
+        if (!OptimizatorConfig.profilerEnabled) return;
         particleCreated++;
     }
 
     public static void recordParticleRejected() {
+        if (!OptimizatorConfig.profilerEnabled) return;
         particleRejected++;
     }
 
