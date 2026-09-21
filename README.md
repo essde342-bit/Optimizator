@@ -4,6 +4,10 @@ Client-side optimization mod for Minecraft 1.21.4 + Fabric.
 
 Optimizator is built around a different goal from a simple video-settings tweak: reduce renderer work while preserving the requested visual result whenever technically possible.
 
+## Default safety profile
+
+On a fresh install, **all optimization features are OFF**. The master switch is also OFF. Every implemented optimization can be enabled or disabled by the user, and supported numeric parameters are exposed in the settings screens. Older pre-v2 configs are migrated to this neutral profile.
+
 ## Current optimization layer
 
 - Adaptive performance controller with hysteresis (opt-in; visual-parity safe by default).
@@ -16,7 +20,22 @@ Optimizator is built around a different goal from a simple video-settings tweak:
 - Particle budget per second.
 - Optional particle distance culling.
 - Per-particle-type disable and reduced lists, including trailing * wildcards.
+- Optional profiler and live HUD overlay.
 - Persistent config in config/optimizator.properties.
+
+## User configuration
+
+Open `Pause menu -> Optimizator`.
+
+The main settings are split into pages for small screens:
+
+- General / Profiler: master switch, adaptive controller, profiler and overlay.
+- Entities / Adaptive: entity culling, shadow control, distances, FPS floor and cloud behaviour.
+- Chunks: upload budget and upload timing limits.
+- Particle settings: quality, limiter, culling, budget and per-type rules.
+- Performance profiler: live metrics and bottleneck information.
+
+All optimization switches are OFF after a fresh install or a full reset.
 
 ## Detailed particle controls
 
