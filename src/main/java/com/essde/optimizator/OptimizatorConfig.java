@@ -19,7 +19,7 @@ public final class OptimizatorConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger("Optimizator");
     private static final Path CONFIG_FILE =
             FabricLoader.getInstance().getConfigDir().resolve("optimizator.properties");
-    private static final int CONFIG_VERSION = 2;
+    private static final int CONFIG_VERSION = 3;
 
     // Master switch is OFF by default. Every optimization feature is also OFF
     // by default so the first launch never changes rendering behaviour silently.
@@ -27,6 +27,8 @@ public final class OptimizatorConfig {
     public static boolean adaptive = false;
     public static boolean particleLimiter = false;
     public static boolean particleCulling = false;
+    /** Hard switch which prevents every client particle from being spawned. */
+    public static boolean allParticlesDisabled = false;
     public static boolean deepEntityCulling = false;
     public static boolean fastEntityShadows = false;
     public static boolean chunkUploadBudget = false;
@@ -73,17 +75,16 @@ public final class OptimizatorConfig {
 
             int version = getInt(properties, "config_version", 0);
             if (version < CONFIG_VERSION) {
-                LOGGER.info("Migrating Optimizator config to version {} with all features disabled by default.",
-                        CONFIG_VERSION);
-                resetDefaults();
-                save();
-                return;
+                LOGGER.info("Migrating Optimizator config from version {} to {} without resetting user settings.",
+                        version, CONFIG_VERSION);
             }
 
             enabled = getBoolean(properties, "enabled", enabled);
             adaptive = getBoolean(properties, "adaptive", adaptive);
             particleLimiter = getBoolean(properties, "particle_limiter", particleLimiter);
             particleCulling = getBoolean(properties, "particle_culling", particleCulling);
+            allParticlesDisabled =
+                    getBoolean(properties, "all_particles_disabled", allParticlesDisabled);
             deepEntityCulling = getBoolean(properties, "deep_entity_culling", deepEntityCulling);
             fastEntityShadows = getBoolean(properties, "fast_entity_shadows", fastEntityShadows);
             chunkUploadBudget = getBoolean(properties, "chunk_upload_budget", chunkUploadBudget);
@@ -143,6 +144,8 @@ public final class OptimizatorConfig {
             properties.setProperty("adaptive", Boolean.toString(adaptive));
             properties.setProperty("particle_limiter", Boolean.toString(particleLimiter));
             properties.setProperty("particle_culling", Boolean.toString(particleCulling));
+            properties.setProperty(
+                    "all_particles_disabled", Boolean.toString(allParticlesDisabled));
             properties.setProperty("deep_entity_culling", Boolean.toString(deepEntityCulling));
             properties.setProperty("fast_entity_shadows", Boolean.toString(fastEntityShadows));
             properties.setProperty("chunk_upload_budget", Boolean.toString(chunkUploadBudget));
@@ -189,6 +192,7 @@ public final class OptimizatorConfig {
         adaptive = false;
         particleLimiter = false;
         particleCulling = false;
+        allParticlesDisabled = false;
         deepEntityCulling = false;
         fastEntityShadows = false;
         chunkUploadBudget = false;
