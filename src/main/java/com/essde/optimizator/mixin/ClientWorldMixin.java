@@ -1,6 +1,7 @@
 package com.essde.optimizator.mixin;
 
 import com.essde.optimizator.OptimizatorRuntime;
+import com.essde.optimizator.PerformanceProfiler;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.particle.ParticleEffect;
 import org.spongepowered.asm.mixin.Mixin;
@@ -35,6 +36,7 @@ public abstract class ClientWorldMixin {
                 y,
                 z
         )) {
+            PerformanceProfiler.recordParticleRejected();
             callbackInfo.cancel();
         }
     }
