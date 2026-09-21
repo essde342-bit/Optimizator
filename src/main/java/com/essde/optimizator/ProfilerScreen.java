@@ -32,6 +32,10 @@ public final class ProfilerScreen extends Screen {
                 Text.literal("Overlay: " + (OptimizatorConfig.profilerOverlay ? "ON" : "OFF")),
                 button -> {
                     OptimizatorConfig.profilerOverlay = !OptimizatorConfig.profilerOverlay;
+                    if (OptimizatorConfig.profilerOverlay) {
+                        OptimizatorConfig.profilerEnabled = true;
+                        OptimizatorConfig.enabled = true;
+                    }
                     button.setMessage(Text.literal(
                             "Overlay: " + (OptimizatorConfig.profilerOverlay ? "ON" : "OFF")));
                     OptimizatorConfig.save();
