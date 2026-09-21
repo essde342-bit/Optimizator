@@ -177,6 +177,13 @@ public final class PerformanceProfiler {
         return particleRejected;
     }
 
+    public static double exclusiveWorldMs() {
+        return Math.max(
+                0.0D,
+                worldMs() - entitiesMs() - blockEntitiesMs() - particlesMs()
+        );
+    }
+
     public static int bottleneck(MinecraftClient client) {
         double frame = Math.max(frameMs(), 0.01D);
         double world = worldMs();
@@ -184,10 +191,18 @@ public final class PerformanceProfiler {
         double blockEntities = blockEntitiesMs();
         double particles = particlesMs();
 
-        if (world / frame > 0.45D) return 1;
-        if (entities / frame > 0.25D) return 2;
+        // renderMain is an outer timing region; the more specific timers are
+        // nested inside it. Approximate the remaining world/terrain cost by
+        // subtracting those nested stages instead of double-counting them.
+        double exclusiveWorld = Math.max(
+                0.0D,
+                world - entities - blockEntities - particles
+        );
+
+        if (particles / frame > 0.20D) return 4;
         if (blockEntities / frame > 0.20D) return 3;
-        if (particles / frame > 0.15D) return 4;
+        if (entities / frame > 0.25D) return 2;
+        if (exclusiveWorld / frame > 0.35D) return 1;
         return 0;
     }
 
