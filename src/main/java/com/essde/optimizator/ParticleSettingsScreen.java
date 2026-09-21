@@ -128,12 +128,12 @@ public final class ParticleSettingsScreen extends Screen {
         y += 25;
 
         addDrawableChild(ButtonWidget.builder(
-                        Text.literal("Reset particle defaults"),
+                        Text.literal("Reset particle defaults (OFF)"),
                         button -> {
-                            OptimizatorConfig.particleLimiter = true;
+                            OptimizatorConfig.particleLimiter = false;
                             OptimizatorConfig.particleCulling = false;
-                            OptimizatorConfig.particleQuality = 1;
-                            OptimizatorConfig.particleBudget = 1200;
+                            OptimizatorConfig.particleQuality = 0;
+                            OptimizatorConfig.particleBudget = 10000;
                             OptimizatorConfig.particleCullDistance = 128;
                             OptimizatorConfig.particleDisabledTypes.clear();
                             OptimizatorConfig.particleReducedTypes.clear();
