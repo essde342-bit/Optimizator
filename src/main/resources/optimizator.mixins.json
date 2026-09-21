@@ -6,6 +6,7 @@
   "client": [
     "ClientWorldMixin",
     "GameMenuScreenMixin",
+    "WorldRendererCoreOptimizerMixin",
     "WorldRendererEntityCullingMixin",
     "EntityRenderDispatcherMixin",
     "ChunkBuilderMixin",
