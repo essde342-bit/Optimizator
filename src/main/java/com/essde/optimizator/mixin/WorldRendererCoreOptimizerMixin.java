@@ -11,10 +11,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(WorldRenderer.class)
 public abstract class WorldRendererCoreOptimizerMixin {
-    @Shadow
-    @Final
-    private ChunkBuilder chunkBuilder;
-
     @Inject(
             method = "setupTerrain(Lnet/minecraft/client/render/Camera;Lnet/minecraft/client/render/Frustum;ZZ)V",
             at = @At("HEAD"),
