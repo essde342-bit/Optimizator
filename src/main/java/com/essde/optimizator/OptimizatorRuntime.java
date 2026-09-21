@@ -236,11 +236,18 @@ public final class OptimizatorRuntime {
             double y,
             double z
     ) {
-        if (!OptimizatorConfig.enabled || !force && !OptimizatorConfig.particleLimiter) {
+        if (!OptimizatorConfig.enabled || parameters == null || force) {
             return true;
         }
 
-        if (parameters == null || force) {
+        boolean typeRulesActive =
+                !OptimizatorConfig.particleDisabledTypes.isEmpty()
+                        || !OptimizatorConfig.particleReducedTypes.isEmpty();
+        boolean qualityActive = OptimizatorConfig.particleQuality != 0;
+        if (!OptimizatorConfig.particleLimiter
+                && !OptimizatorConfig.particleCulling
+                && !qualityActive
+                && !typeRulesActive) {
             return true;
         }
 
@@ -338,10 +345,13 @@ public final class OptimizatorRuntime {
             return false;
         }
 
-        boolean cheapEntity = entity instanceof net.minecraft.entity.ItemEntity
-                || entity instanceof net.minecraft.entity.ExperienceOrbEntity;
+        boolean allowedType =
+                (OptimizatorConfig.cullItemEntities
+                        && entity instanceof net.minecraft.entity.ItemEntity)
+                        || (OptimizatorConfig.cullExperienceOrbs
+                        && entity instanceof net.minecraft.entity.ExperienceOrbEntity);
 
-        if (!cheapEntity) {
+        if (!allowedType) {
             return false;
         }
 
