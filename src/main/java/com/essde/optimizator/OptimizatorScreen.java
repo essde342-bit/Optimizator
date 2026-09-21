@@ -3,9 +3,12 @@ package com.essde.optimizator;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.text.Text;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -13,238 +16,183 @@ import java.util.function.Consumer;
 public final class OptimizatorScreen extends Screen {
     private final Screen parent;
     private int page = 0;
+    private int contentWidth;
 
-    private ButtonWidget enabledButton;
-    private ButtonWidget adaptiveButton;
-    private ButtonWidget profilerButton;
-    private ButtonWidget overlayButton;
-    private ButtonWidget entityButton;
-    private ButtonWidget itemCullButton;
-    private ButtonWidget xpCullButton;
-    private ButtonWidget shadowButton;
-    private ButtonWidget uploadButton;
-    private ButtonWidget cloudButton;
+    private final List<HelpEntry> helpEntries = new ArrayList<>();
 
     public OptimizatorScreen(Screen parent) {
-        super(Text.literal("Optimizator"));
+        super(Text.translatable("screen.optimizator.title"));
         this.parent = parent;
     }
 
     @Override
     protected void init() {
-        int center = this.width / 2;
-        int buttonWidth = Math.min(240, this.width - 20);
-        int left = center - buttonWidth / 2;
-        int y = 64;
+        this.helpEntries.clear();
+
+        int buttonWidth = Math.min(310, this.width - 18);
+        int left = (this.width - buttonWidth) / 2;
+        this.contentWidth = buttonWidth;
 
         if (page == 0) {
-            this.enabledButton = addDrawableChild(toggleButton(
-                    left, y, "Master switch",
+            addToggle(left, 0, "optimizator.option.master", "optimizator.help.master",
                     () -> OptimizatorConfig.enabled,
-                    value -> OptimizatorConfig.enabled = value));
-            y += 24;
+                    value -> OptimizatorConfig.enabled = value);
 
-            this.adaptiveButton = addDrawableChild(toggleButton(
-                    left, y, "Adaptive controller",
+            addToggle(left, 1, "optimizator.option.adaptive", "optimizator.help.adaptive",
                     () -> OptimizatorConfig.adaptive,
-                    value -> OptimizatorConfig.adaptive = value));
-            y += 24;
+                    value -> OptimizatorConfig.adaptive = value);
 
-            this.profilerButton = addDrawableChild(toggleButton(
-                    left, y, "Profiler",
-                    () -> OptimizatorConfig.profilerEnabled,
-                    value -> OptimizatorConfig.profilerEnabled = value));
-            y += 24;
-
-            this.overlayButton = addDrawableChild(toggleButton(
-                    left, y, "Profiler overlay",
-                    () -> OptimizatorConfig.profilerOverlay,
-                    value -> OptimizatorConfig.profilerOverlay = value));
-            y += 30;
-
-            addDrawableChild(ButtonWidget.builder(
-                            Text.literal("Particle settings"),
-                            button -> this.client.setScreen(new ParticleSettingsScreen(this)))
-                    .dimensions(left, y, buttonWidth, 20)
-                    .build());
-            y += 25;
-
-            addDrawableChild(ButtonWidget.builder(
-                            Text.literal("Performance profiler"),
-                            button -> this.client.setScreen(new ProfilerScreen(this)))
-                    .dimensions(left, y, buttonWidth, 20)
-                    .build());
-        } else if (page == 1) {
-            this.entityButton = addDrawableChild(toggleButton(
-                    left, y, "Deep entity culling",
+            addToggle(left, 2, "optimizator.option.entities", "optimizator.help.entities",
                     () -> OptimizatorConfig.deepEntityCulling,
-                    value -> OptimizatorConfig.deepEntityCulling = value));
-            y += 24;
+                    value -> {
+                        OptimizatorConfig.deepEntityCulling = value;
+                        if (value) {
+                            OptimizatorConfig.cullItemEntities = true;
+                            OptimizatorConfig.cullExperienceOrbs = true;
+                            OptimizatorConfig.enabled = true;
+                        }
+                    });
 
-            this.itemCullButton = addDrawableChild(toggleButton(
-                    left, y, "Cull dropped items",
-                    () -> OptimizatorConfig.cullItemEntities,
-                    value -> OptimizatorConfig.cullItemEntities = value));
-            y += 24;
+            addAction(left, 3, "optimizator.option.particles", "optimizator.help.particles",
+                    button -> this.client.setScreen(new ParticleSettingsScreen(this)));
 
-            this.xpCullButton = addDrawableChild(toggleButton(
-                    left, y, "Cull XP orbs",
-                    () -> OptimizatorConfig.cullExperienceOrbs,
-                    value -> OptimizatorConfig.cullExperienceOrbs = value));
-            y += 24;
-
-            addDrawableChild(intSlider(
-                    left, y, buttonWidth,
-                    "Far entity cull",
-                    OptimizatorConfig.farEntityCullDistance, 16, 128,
-                    value -> OptimizatorConfig.farEntityCullDistance = value));
-            y += 25;
-
-            this.shadowButton = addDrawableChild(toggleButton(
-                    left, y, "Entity shadow culling",
-                    () -> OptimizatorConfig.fastEntityShadows,
-                    value -> OptimizatorConfig.fastEntityShadows = value));
-            y += 24;
-
-            addDrawableChild(intSlider(
-                    left, y, buttonWidth,
-                    "Shadow render distance",
-                    OptimizatorConfig.entityShadowDistance, 8, 256,
-                    value -> OptimizatorConfig.entityShadowDistance = value));
-            y += 25;
-
-            addDrawableChild(intSlider(
-                    left, y, buttonWidth,
-                    "Adaptive min render distance",
-                    OptimizatorConfig.minRenderDistance, 4, 32,
-                    value -> OptimizatorConfig.minRenderDistance = value));
-            y += 25;
-
-            addDrawableChild(doubleSlider(
-                    left, y, buttonWidth,
-                    "Adaptive min entity distance",
-                    OptimizatorConfig.minEntityDistance, 0.15D, 1.0D,
-                    value -> OptimizatorConfig.minEntityDistance = value));
-            y += 25;
-
-            addDrawableChild(intSlider(
-                    left, y, buttonWidth,
-                    "Adaptive FPS floor",
-                    OptimizatorConfig.fpsFloor, 20, 120,
-                    value -> OptimizatorConfig.fpsFloor = value));
-            y += 25;
-
-            this.cloudButton = addDrawableChild(toggleButton(
-                    left, y, "Disable clouds under load",
-                    () -> OptimizatorConfig.disableCloudsUnderLoad,
-                    value -> OptimizatorConfig.disableCloudsUnderLoad = value));
-        } else {
-            this.uploadButton = addDrawableChild(toggleButton(
-                    left, y, "Chunk upload budget",
+            addToggle(left, 4, "optimizator.option.chunks", "optimizator.help.chunks",
                     () -> OptimizatorConfig.chunkUploadBudget,
-                    value -> OptimizatorConfig.chunkUploadBudget = value));
-            y += 24;
+                    value -> OptimizatorConfig.chunkUploadBudget = value);
 
-            addDrawableChild(intSlider(
-                    left, y, buttonWidth,
-                    "Max chunk uploads",
-                    OptimizatorConfig.maxChunkUploadsPerFrame, 1, 32,
-                    value -> OptimizatorConfig.maxChunkUploadsPerFrame = value));
-            y += 25;
+            addAction(left, 5, "optimizator.option.profiler", "optimizator.help.profiler",
+                    button -> this.client.setScreen(new ProfilerScreen(this)));
+        } else if (page == 1) {
+            addToggle(left, 0, "optimizator.option.item_culling", "optimizator.help.item_culling",
+                    () -> OptimizatorConfig.cullItemEntities,
+                    value -> {
+                        OptimizatorConfig.cullItemEntities = value;
+                        if (value) OptimizatorConfig.enabled = true;
+                    });
 
-            addDrawableChild(intSlider(
-                    left, y, buttonWidth,
-                    "Chunk upload budget (µs)",
-                    OptimizatorConfig.chunkUploadBudgetMicros, 250, 10000,
-                    value -> OptimizatorConfig.chunkUploadBudgetMicros = value));
-            y += 30;
+            addToggle(left, 1, "optimizator.option.xp_culling", "optimizator.help.xp_culling",
+                    () -> OptimizatorConfig.cullExperienceOrbs,
+                    value -> {
+                        OptimizatorConfig.cullExperienceOrbs = value;
+                        if (value) OptimizatorConfig.enabled = true;
+                    });
 
-            addDrawableChild(ButtonWidget.builder(
-                            Text.literal("Particle settings"),
-                            button -> this.client.setScreen(new ParticleSettingsScreen(this)))
-                    .dimensions(left, y, buttonWidth, 20)
-                    .build());
-            y += 25;
+            addSlider(left, 2, "optimizator.option.entity_distance", "optimizator.help.entity_distance",
+                    OptimizatorConfig.farEntityCullDistance, 16, 128, "m",
+                    value -> OptimizatorConfig.farEntityCullDistance = value);
 
-            addDrawableChild(ButtonWidget.builder(
-                            Text.literal("Reset ALL defaults (OFF)"),
-                            button -> {
-                                OptimizatorConfig.resetDefaults();
-                                OptimizatorConfig.save();
-                                clearAndInit();
-                            })
-                    .dimensions(left, y, buttonWidth, 20)
-                    .build());
+            addToggle(left, 3, "optimizator.option.shadow_culling", "optimizator.help.shadow_culling",
+                    () -> OptimizatorConfig.fastEntityShadows,
+                    value -> {
+                        OptimizatorConfig.fastEntityShadows = value;
+                        if (value) OptimizatorConfig.enabled = true;
+                    });
+
+            addSlider(left, 4, "optimizator.option.shadow_distance", "optimizator.help.shadow_distance",
+                    OptimizatorConfig.entityShadowDistance, 8, 256, "m",
+                    value -> OptimizatorConfig.entityShadowDistance = value);
+
+            addToggle(left, 5, "optimizator.option.clouds", "optimizator.help.clouds",
+                    () -> OptimizatorConfig.disableCloudsUnderLoad,
+                    value -> {
+                        OptimizatorConfig.disableCloudsUnderLoad = value;
+                        if (value) OptimizatorConfig.enabled = true;
+                    });
+        } else {
+            addSlider(left, 0, "optimizator.option.adaptive_render_distance", "optimizator.help.adaptive_render_distance",
+                    OptimizatorConfig.minRenderDistance, 4, 32, " chunks",
+                    value -> OptimizatorConfig.minRenderDistance = value);
+
+            addDoubleSlider(left, 1, "optimizator.option.adaptive_entity_distance",
+                    "optimizator.help.adaptive_entity_distance",
+                    OptimizatorConfig.minEntityDistance, 0.15D, 1.0D,
+                    value -> OptimizatorConfig.minEntityDistance = value);
+
+            addSlider(left, 2, "optimizator.option.adaptive_fps", "optimizator.help.adaptive_fps",
+                    OptimizatorConfig.fpsFloor, 20, 120, " FPS",
+                    value -> OptimizatorConfig.fpsFloor = value);
+
+            addSlider(left, 3, "optimizator.option.chunk_uploads", "optimizator.help.chunk_uploads",
+                    OptimizatorConfig.maxChunkUploadsPerFrame, 1, 32, "",
+                    value -> OptimizatorConfig.maxChunkUploadsPerFrame = value);
+
+            addSlider(left, 4, "optimizator.option.chunk_budget", "optimizator.help.chunk_budget",
+                    OptimizatorConfig.chunkUploadBudgetMicros, 250, 10000, " µs",
+                    value -> OptimizatorConfig.chunkUploadBudgetMicros = value);
+
+            addToggle(left, 5, "optimizator.option.overlay", "optimizator.help.overlay",
+                    () -> OptimizatorConfig.profilerOverlay,
+                    value -> {
+                        OptimizatorConfig.profilerOverlay = value;
+                        if (value) {
+                            OptimizatorConfig.profilerEnabled = true;
+                            OptimizatorConfig.enabled = true;
+                        }
+                    });
         }
 
-        addDrawableChild(ButtonWidget.builder(
-                        Text.literal("Page " + (page + 1) + "/3"),
-                        button -> {
-                            page = (page + 1) % 3;
-                            clearAndInit();
-                        })
-                .dimensions(left, this.height - 55, buttonWidth / 2 - 4, 20)
-                .build());
-
-        addDrawableChild(ButtonWidget.builder(
-                        Text.literal("Done"),
-                        button -> {
-                            OptimizatorConfig.save();
-                            this.client.setScreen(this.parent);
-                        })
-                .dimensions(left + buttonWidth / 2 + 4, this.height - 55,
-                        buttonWidth / 2 - 4, 20)
-                .build());
+        addNavigation(left);
     }
 
-    private ButtonWidget toggleButton(
-            int x,
-            int y,
-            String label,
+    private void addToggle(
+            int left,
+            int row,
+            String labelKey,
+            String helpKey,
             BooleanSupplier getter,
             Consumer<Boolean> setter
     ) {
-        return ButtonWidget.builder(
-                        Text.literal(label + ": " + onOff(getter.getAsBoolean())),
-                        button -> {
+        ButtonWidget button = addDrawableChild(ButtonWidget.builder(
+                        toggleText(labelKey, getter.getAsBoolean()),
+                        widget -> {
                             boolean next = !getter.getAsBoolean();
                             setter.accept(next);
-                            if (next && !label.equals("Master switch")) {
+                            if (next && !labelKey.equals("optimizator.option.master")) {
                                 OptimizatorConfig.enabled = true;
-                                if (label.equals("Deep entity culling")) {
-                                    OptimizatorConfig.cullItemEntities = true;
-                                    OptimizatorConfig.cullExperienceOrbs = true;
-                                }
-                                if (label.equals("Profiler overlay")) {
-                                    OptimizatorConfig.profilerEnabled = true;
-                                }
-                                if (this.enabledButton != null) {
-                                    this.enabledButton.setMessage(
-                                            Text.literal("Master switch: ON"));
-                                }
                             }
-                            button.setMessage(Text.literal(
-                                    label + ": " + onOff(next)));
+                            widget.setMessage(toggleText(labelKey, next));
                             OptimizatorConfig.save();
                         })
-                .dimensions(x, y, 240, 20)
-                .build();
+                .dimensions(left, rowY(row), contentWidth, 20)
+                .build());
+        addHelp(button, helpKey);
     }
 
-    private <T> SliderWidget intSlider(
-            int x, int y, int width,
-            String label, int current, int min, int max,
+    private void addAction(
+            int left,
+            int row,
+            String labelKey,
+            String helpKey,
+            java.util.function.Consumer<ButtonWidget> action
+    ) {
+        ButtonWidget button = addDrawableChild(ButtonWidget.builder(
+                        Text.translatable(labelKey),
+                        action)
+                .dimensions(left, rowY(row), contentWidth, 20)
+                .build());
+        addHelp(button, helpKey);
+    }
+
+    private void addSlider(
+            int left,
+            int row,
+            String labelKey,
+            String helpKey,
+            int current,
+            int min,
+            int max,
+            String suffix,
             Consumer<Integer> setter
     ) {
-        return new SliderWidget(
-                x, y, width, 20,
-                Text.literal(label + ": " + current),
+        SliderWidget slider = new SliderWidget(
+                left, rowY(row), contentWidth, 20,
+                sliderText(labelKey, current + suffix),
                 (current - (double) min) / (max - min)
         ) {
             @Override
             protected void updateMessage() {
                 int value = min + (int) Math.round(this.value * (max - min));
-                setMessage(Text.literal(label + ": " + value));
+                setMessage(sliderText(labelKey, value + suffix));
             }
 
             @Override
@@ -254,23 +202,29 @@ public final class OptimizatorScreen extends Screen {
                 OptimizatorConfig.save();
             }
         };
+        addDrawableChild(slider);
+        addHelp(slider, helpKey);
     }
 
-    private SliderWidget doubleSlider(
-            int x, int y, int width,
-            String label, double current, double min, double max,
+    private void addDoubleSlider(
+            int left,
+            int row,
+            String labelKey,
+            String helpKey,
+            double current,
+            double min,
+            double max,
             Consumer<Double> setter
     ) {
-        return new SliderWidget(
-                x, y, width, 20,
-                Text.literal(String.format(Locale.ROOT, "%s: %.2f", label, current)),
+        SliderWidget slider = new SliderWidget(
+                left, rowY(row), contentWidth, 20,
+                sliderText(labelKey, String.format(Locale.ROOT, "%.2f", current)),
                 (current - min) / (max - min)
         ) {
             @Override
             protected void updateMessage() {
                 double value = min + this.value * (max - min);
-                setMessage(Text.literal(
-                        String.format(Locale.ROOT, "%s: %.2f", label, value)));
+                setMessage(sliderText(labelKey, String.format(Locale.ROOT, "%.2f", value)));
             }
 
             @Override
@@ -280,20 +234,77 @@ public final class OptimizatorScreen extends Screen {
                 OptimizatorConfig.save();
             }
         };
+        addDrawableChild(slider);
+        addHelp(slider, helpKey);
     }
 
-    private static String onOff(boolean value) {
-        return value ? "ON" : "OFF";
+    private void addNavigation(int left) {
+        int y = this.height - 27;
+        int arrowWidth = 34;
+        int pageWidth = 82;
+        int gap = 5;
+        int doneWidth = contentWidth - arrowWidth * 2 - pageWidth - gap * 3;
+
+        addDrawableChild(ButtonWidget.builder(Text.literal("‹"), button -> {
+                    page = (page + 2) % 3;
+                    clearAndInit();
+                }).dimensions(left, y, arrowWidth, 20).build());
+
+        addDrawableChild(ButtonWidget.builder(
+                Text.translatable("optimizator.navigation.page", page + 1, 3),
+                button -> {
+                    page = (page + 1) % 3;
+                    clearAndInit();
+                }).dimensions(left + arrowWidth + gap, y, pageWidth, 20).build());
+
+        addDrawableChild(ButtonWidget.builder(Text.literal("›"), button -> {
+                    page = (page + 1) % 3;
+                    clearAndInit();
+                }).dimensions(left + arrowWidth + gap + pageWidth + gap, y, arrowWidth, 20).build());
+
+        addDrawableChild(ButtonWidget.builder(Text.translatable("optimizator.navigation.done"), button -> {
+                    OptimizatorConfig.save();
+                    this.client.setScreen(this.parent);
+                }).dimensions(
+                left + arrowWidth + gap + pageWidth + gap + arrowWidth + gap,
+                y,
+                doneWidth,
+                20
+        ).build());
+    }
+
+    private int rowY(int row) {
+        return 94 + row * 23;
+    }
+
+    private void addHelp(ClickableWidget widget, String helpKey) {
+        this.helpEntries.add(new HelpEntry(widget, helpKey));
+    }
+
+    private Text toggleText(String key, boolean value) {
+        return Text.translatable(key)
+                .copy()
+                .append(Text.literal(": "))
+                .append(Text.translatable(value
+                        ? "optimizator.status.on"
+                        : "optimizator.status.off"));
+    }
+
+    private Text sliderText(String key, String value) {
+        return Text.translatable(key)
+                .copy()
+                .append(Text.literal(": "))
+                .append(Text.literal(value));
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context, mouseX, mouseY, delta);
 
-        int panelWidth = Math.min(280, this.width - 10);
+        int panelWidth = Math.min(330, this.width - 10);
         int panelLeft = (this.width - panelWidth) / 2;
-        int panelTop = 40;
-        int panelBottom = this.height - 16;
+        int panelTop = 28;
+        int panelBottom = this.height - 6;
 
         context.fill(panelLeft, panelTop, panelLeft + panelWidth, panelBottom, 0xD0101010);
         context.fill(panelLeft + 1, panelTop + 1,
@@ -301,39 +312,77 @@ public final class OptimizatorScreen extends Screen {
 
         context.drawCenteredTextWithShadow(
                 this.textRenderer,
-                this.title,
+                Text.translatable("screen.optimizator.title"),
                 this.width / 2,
-                49,
+                35,
                 0xFFFFFFFF
         );
 
-        String pageName = switch (page) {
-            case 0 -> "GENERAL / PROFILER";
-            case 1 -> "ENTITIES / ADAPTIVE";
-            default -> "CHUNKS";
-        };
+        Text pageTitle = Text.translatable(switch (page) {
+            case 0 -> "screen.optimizator.page.main";
+            case 1 -> "screen.optimizator.page.entities";
+            default -> "screen.optimizator.page.performance";
+        });
         context.drawCenteredTextWithShadow(
                 this.textRenderer,
-                Text.literal(pageName),
+                pageTitle,
                 this.width / 2,
-                31,
+                48,
                 0xFFAAAAAA
         );
 
+        Text helpText = getCurrentHelp(mouseX, mouseY);
+        int helpLeft = panelLeft + 8;
+        int helpWidth = panelWidth - 16;
+        int helpY = 61;
+        List<net.minecraft.text.OrderedText> lines = this.textRenderer.wrapLines(helpText, helpWidth);
+        int maxLines = 2;
+        for (int i = 0; i < Math.min(maxLines, lines.size()); i++) {
+            context.drawTextWithShadow(
+                    this.textRenderer,
+                    lines.get(i),
+                    helpLeft,
+                    helpY + i * 9,
+                    0xFFE0E0E0
+            );
+        }
+
         context.drawCenteredTextWithShadow(
                 this.textRenderer,
-                Text.literal("All optimizations are OFF by default"),
+                Text.translatable("screen.optimizator.footer"),
                 this.width / 2,
-                panelBottom - 25,
-                0xFFAAAAAA
+                panelBottom - 38,
+                0xFF777777
         );
 
         super.render(context, mouseX, mouseY, delta);
+    }
+
+    private Text getCurrentHelp(int mouseX, int mouseY) {
+        for (HelpEntry entry : helpEntries) {
+            ClickableWidget widget = entry.widget();
+            boolean over = mouseX >= widget.getX()
+                    && mouseX < widget.getX() + widget.getWidth()
+                    && mouseY >= widget.getY()
+                    && mouseY < widget.getY() + widget.getHeight();
+            if (over || widget.isFocused()) {
+                return Text.translatable(entry.helpKey());
+            }
+        }
+
+        return Text.translatable(switch (page) {
+            case 0 -> "optimizator.help.page_main";
+            case 1 -> "optimizator.help.page_entities";
+            default -> "optimizator.help.page_performance";
+        });
     }
 
     @Override
     public void close() {
         OptimizatorConfig.save();
         this.client.setScreen(this.parent);
+    }
+
+    private record HelpEntry(ClickableWidget widget, String helpKey) {
     }
 }
