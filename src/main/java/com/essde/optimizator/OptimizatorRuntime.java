@@ -77,9 +77,6 @@ public final class OptimizatorRuntime {
             initialize();
         }
 
-        // Rebuild coalescing only needs to live for one client tick.
-        CoreRendererOptimizer.endClientTick();
-
         if (!OptimizatorConfig.enabled) {
             if (controlsVanillaOptions && client.world != null && client.player != null) {
                 restoreUserOptions(client.options);
