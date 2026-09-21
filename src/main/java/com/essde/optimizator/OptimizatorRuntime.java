@@ -5,6 +5,7 @@ import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.registry.Registries;
+import net.minecraft.util.math.Vec3d;
 
 public final class OptimizatorRuntime {
     private static final int CONTROL_INTERVAL_TICKS = 40;
@@ -27,7 +28,11 @@ public final class OptimizatorRuntime {
     private static CloudRenderMode lastAppliedCloudMode;
 
     private static long particleWindowStartNanos = System.nanoTime();
+    private static long particleNowNanos = particleWindowStartNanos;
     private static int particlesInWindow;
+    private static double particleCameraX;
+    private static double particleCameraY;
+    private static double particleCameraZ;
     private static int currentParticleBudget = OptimizatorConfig.particleBudget;
 
     private OptimizatorRuntime() {
@@ -46,7 +51,11 @@ public final class OptimizatorRuntime {
         lastAppliedEntityDistance = -1.0D;
         lastAppliedCloudMode = null;
         particleWindowStartNanos = System.nanoTime();
+        particleNowNanos = particleWindowStartNanos;
         particlesInWindow = 0;
+        particleCameraX = 0.0D;
+        particleCameraY = 0.0D;
+        particleCameraZ = 0.0D;
         currentParticleBudget = OptimizatorConfig.particleBudget;
     }
 
@@ -65,6 +74,18 @@ public final class OptimizatorRuntime {
         if (client.world == null || client.player == null) {
             return;
         }
+
+        particleNowNanos = System.nanoTime();
+        if (particleNowNanos - particleWindowStartNanos >= 1_000_000_000L) {
+            particleWindowStartNanos = particleNowNanos;
+            particlesInWindow = 0;
+        }
+        Vec3d particleCamera = client.cameraEntity != null
+                ? client.cameraEntity.getPos()
+                : client.player.getPos();
+        particleCameraX = particleCamera.x;
+        particleCameraY = particleCamera.y;
+        particleCameraZ = particleCamera.z;
 
         GameOptions options = client.options;
         rememberUserBaseline(options);
@@ -219,11 +240,7 @@ public final class OptimizatorRuntime {
             return true;
         }
 
-        if (parameters == null) {
-            return true;
-        }
-
-        if (force) {
+        if (parameters == null || force) {
             return true;
         }
 
@@ -231,19 +248,21 @@ public final class OptimizatorRuntime {
             return false;
         }
 
-        String typeId = Registries.PARTICLE_TYPE.getId(parameters.getType()).toString();
-        int typeMode = OptimizatorConfig.getParticleMode(typeId);
-
-        if (typeMode == 2) {
-            return false;
+        int typeMode = 0;
+        int typeHash = parameters.getType().hashCode();
+        if (!OptimizatorConfig.particleDisabledTypes.isEmpty()
+                || !OptimizatorConfig.particleReducedTypes.isEmpty()) {
+            String typeId = Registries.PARTICLE_TYPE.getId(parameters.getType()).toString();
+            typeMode = OptimizatorConfig.getParticleMode(typeId);
+            if (typeMode == 2) {
+                return false;
+            }
         }
 
-        if (OptimizatorConfig.particleCulling
-                && MinecraftClient.getInstance().cameraEntity != null) {
-            Vec3d camera = MinecraftClient.getInstance().cameraEntity.getPos();
-            double dx = x - camera.x;
-            double dy = y - camera.y;
-            double dz = z - camera.z;
+        if (OptimizatorConfig.particleCulling) {
+            double dx = x - particleCameraX;
+            double dy = y - particleCameraY;
+            double dz = z - particleCameraZ;
             double limit = OptimizatorConfig.particleCullDistance;
             if (dx * dx + dy * dy + dz * dz > limit * limit) {
                 return false;
@@ -262,14 +281,8 @@ public final class OptimizatorRuntime {
             probability *= 0.50D;
         }
 
-        if (probability < 1.0D && !sampleParticle(probability, typeId, x, y, z)) {
+        if (probability < 1.0D && !sampleParticle(probability, typeHash, x, y, z)) {
             return false;
-        }
-
-        long now = System.nanoTime();
-        if (now - particleWindowStartNanos >= 1_000_000_000L) {
-            particleWindowStartNanos = now;
-            particlesInWindow = 0;
         }
 
         if (particlesInWindow >= currentParticleBudget) {
@@ -282,7 +295,7 @@ public final class OptimizatorRuntime {
 
     private static boolean sampleParticle(
             double probability,
-            String typeId,
+            int typeHash,
             double x,
             double y,
             double z
@@ -290,7 +303,7 @@ public final class OptimizatorRuntime {
         long bits = Double.doubleToLongBits(x);
         bits = bits * 31L + Double.doubleToLongBits(y);
         bits = bits * 31L + Double.doubleToLongBits(z);
-        bits = bits * 31L + typeId.hashCode();
+        bits = bits * 31L + typeHash;
         bits ^= bits >>> 33;
         long positive = bits & Long.MAX_VALUE;
         double normalized = positive / (double) Long.MAX_VALUE;
