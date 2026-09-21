@@ -20,7 +20,8 @@ public abstract class ChunkBuilderMixin {
             return;
         }
 
-        long deadline = System.nanoTime()
+        long start = System.nanoTime();
+        long deadline = start
                 + OptimizatorConfig.chunkUploadBudgetMicros * 1_000L;
         int processed = 0;
 
@@ -38,6 +39,7 @@ public abstract class ChunkBuilderMixin {
             processed++;
         }
 
+        PerformanceProfiler.recordChunkUploads(System.nanoTime() - start, processed);
         callbackInfo.cancel();
     }
 }
