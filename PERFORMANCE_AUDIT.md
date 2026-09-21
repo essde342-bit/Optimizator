@@ -1,77 +1,172 @@
-# Initial performance audit — Minecraft 1.21.4 client
+# Performance audit — Minecraft 1.21.4 client
 
-## Scope
+## Goal
 
-The audit targets client-side workloads that can be reduced without changing the server simulation.
+Optimizator is intended to increase FPS by reducing work inside the client renderer, not by simply forcing low vanilla video settings.
 
-### 1. World/chunk rendering
+Preferred order:
 
-Large render distance is a compound cost: more visible chunk sections, more geometry submitted to the renderer, more chunk rebuild pressure, and more memory traffic.
+1. remove work that cannot affect the final image;
+2. reuse data instead of allocating it repeatedly;
+3. move independent work away from the render thread;
+4. batch GPU uploads and draw work;
+5. only then use adaptive visual reductions when the user enables them.
 
-Action taken: adaptive render-distance reduction. Instead of forcing one low value, Optimizator starts from the player's current setting and reduces it only after sustained low FPS.
+This is the same general direction used by modern renderer optimizers such as Sodium: chunk building, culling, buffer management, and render submission are first-class optimization targets rather than only video-option changes. Sodium exposes settings for chunk update threading, deferred chunk updates, block-face culling, fog occlusion and entity culling. turn645209search0 turn645209search5
 
-### 2. Entity rendering
+## Current implementation
 
-Entity rendering is especially expensive when many mobs, item entities, armor stands, and other renderable objects are simultaneously inside the view.
+### 1. Pre-allocation particle filtering
 
-Minecraft already exposes an entity-distance scale. Reusing that native control is lower-risk than replacing entity selection logic.
+The particle filter runs from ClientWorld.addParticle(...) before Minecraft creates the Particle object.
 
-Action taken: adaptive entityDistanceScaling reduction.
+Supported controls:
 
-### 3. Clouds
+- ALL / DECREASED / MINIMAL particle quality;
+- global particles on/off;
+- distance culling before allocation;
+- particles-per-second budget;
+- exact particle type disable list;
+- exact particle type reduced list;
+- trailing * wildcards such as minecraft:smoke*.
 
-Cloud rendering is optional and can add repeated geometry work in scenes where the GPU is already under pressure.
+This goes deeper than changing the vanilla particle option because unwanted particles are rejected before they enter the ParticleManager queues.
 
-Action taken: clouds are temporarily switched off at higher reduction levels and restored after recovery.
+Sodium exposes the same three conceptual quality levels, while dedicated particle optimization mods also demonstrate the value of culling invisible particles and filtering by type. turn645209search0 turn645209search5
 
-### 4. Particles
+### 2. Chunk GPU-upload budgeting
 
-Particle storms can create a large number of short-lived client objects and render calls. This is a good place for a small allocation-free guard because it does not need to modify world simulation.
+The current ChunkBuilderMixin limits how many queued GPU upload tasks can execute in one frame and can additionally stop after a configured time budget.
 
-Action taken: a per-second budget is applied only to non-forced particle creation. Forced particles are preserved.
+The target is not to reduce final geometry quality, but to prevent a large batch of chunk uploads from creating a render-thread spike.
 
-### 5. CPU/GPU feedback
+Vanilla 1.21.4 ChunkBuilder contains a dedicated uploadQueue and scheduler, so this is a genuine renderer-internal hook rather than a video-option change. turn495864search1
 
-A single instantaneous FPS sample is noisy. A controller that reacts every frame can oscillate and make performance worse.
+### 3. Entity pressure
 
-Action taken: a 40-tick control interval plus consecutive-sample hysteresis.
+Current code uses:
 
-## What is deliberately not changed yet
+- adaptive entity-distance scaling;
+- optional far culling for item entities and XP orbs.
 
-### Chunk meshing internals
+This is intentionally conservative. Sodium's entity culling uses chunk visibility information to skip entities hidden inside non-visible chunks, which is deeper than a distance check. turn645209search5
 
-The chunk builder and mesh upload path are among the most important deep optimization targets, but they are tightly coupled to Minecraft's rendering internals. A safe implementation needs profiling plus exact 1.21.4 mapping coverage before changing scheduling, buffer reuse, or rebuild queues.
+## Deep renderer targets
 
-### Culling replacement
+### A. Section visibility and occlusion
 
-Minecraft already has frustum/entity visibility checks. Replacing them blindly can break nameplates, mounts, shadows, and special renderer behavior. The current version therefore uses the vanilla entity-distance control instead of a second competing culler.
+Vanilla 1.21.4 already has:
 
-### Server simulation
+- a Frustum;
+- built chunk storage;
+- chunk occlusion data;
+- an Octree;
+- a chunk-rendering data preparer.
 
-No server tick rate, mob AI, redstone, random tick, or network packet logic is modified. A client optimization mod should not silently change multiplayer gameplay semantics.
+WorldRenderer also exposes an updateChunks stage and an entity collection stage. turn442879search0 turn965233search3 turn965233search5
 
-## Validation checklist
+The next serious optimization target is therefore not another distance slider. It is a renderer-side visibility pipeline that avoids traversing or rendering sections known to be invisible.
 
-The project is considered build-ready only when all of these pass:
+Sodium's current renderer schedules asynchronous culling work and consumes the resulting render lists instead of rebuilding visibility from scratch on the render thread. turn645209search8
 
-1. GitHub Actions completes the Gradle build.
-2. The remapped jar exists in build/libs.
-3. Mixins apply without startup errors.
-4. The client loads with the default config.
-5. The config file survives restart and malformed values fall back safely.
-6. Adaptive changes restore the user's original render/entity/cloud settings.
-7. Particle limiting never cancels forced particles.
-8. No server-side entrypoint is loaded.
+### B. Chunk mesh generation
 
-## Next profiling targets
+ChunkBuilder.BuiltChunk owns rebuild/sort tasks and the 1.21.4 pipeline contains a dedicated SectionBuilder. turn442879search1 turn965233search1
 
-The next audit phase should measure, on representative PojavLauncher hardware:
+Long-term implementation should investigate:
 
-- chunk rebuild time and queue pressure;
-- frame time split between world, entities, particles, and UI;
-- Java allocation rate during chunk rebuilds;
-- memory pressure caused by visible chunk count;
-- GPU fill/bandwidth pressure at 4–12 chunk distances;
-- behavior differences across Pojav renderer backends.
+- duplicate rebuild requests;
+- rebuild prioritization by camera distance;
+- cancellation of obsolete rebuilds;
+- allocation reuse for mesh buffers;
+- minimizing temporary Java objects while emitting quads;
+- separating opaque and translucent work earlier.
 
-Changes to low-level renderer code should be accepted only after a before/after measurement and a crash/visual-regression check.
+This area has high performance leverage, but it is also where incorrect mixins can corrupt buffers or race with resource reloads.
+
+### C. Buffer allocation and upload reuse
+
+Sodium's development history explicitly contains work on buffer reuse because repeated buffer allocations can worsen frame-time stability during chunk loading. turn645209search1
+
+Optimizator should therefore avoid an implementation that merely throttles uploads while still producing excessive short-lived buffers. The deeper goal is to reduce allocation volume itself.
+
+### D. Block-face submission
+
+Sodium exposes a block-face-culling option because eliminating faces which cannot be seen can remove geometry very early in the pipeline. turn645209search5
+
+For Optimizator, this is a high-value target because it can preserve visual output while reducing vertex generation and GPU bandwidth. It should be implemented inside chunk mesh generation, not by changing texture or graphics settings.
+
+### E. Fog-aware visibility
+
+Vanilla has a dedicated fog/render path, and Sodium exposes fog occlusion to skip chunks fully hidden by fog. turn645209search0 turn645209search5
+
+This can be added as a visibility decision without reducing requested graphics quality, but the implementation must account for underwater, lava, blindness/darkness and unusual camera angles.
+
+### F. Entity visibility
+
+The deeper end goal is chunk-visibility-based entity culling rather than simply reducing entity distance.
+
+That work belongs close to WorldRenderer.getEntitiesToRender(...) and the chunk visibility data so the renderer can reject entities behind fully occluding terrain. The method exists directly in vanilla 1.21.4. turn442879search0
+
+## Adaptive controller
+
+The adaptive controller currently has hysteresis and reacts every 40 client ticks.
+
+This is intentionally not the main optimization mechanism. Dynamic render distance can cause expensive chunk refreshes/rebuilds; Sodium has an issue documenting that dynamic render-distance changes on Minecraft 1.21.4 can trigger full rendering refresh behavior. turn645209search2
+
+Future revisions should prefer:
+
+1. deep culling;
+2. scheduling and batching;
+3. buffer reuse;
+4. only then adaptive visual changes.
+
+## Visual-preservation rule
+
+Defaults should preserve vanilla visual output wherever possible.
+
+A setting that changes the image should be explicit:
+
+- particle quality;
+- particle filters;
+- adaptive render distance;
+- adaptive entity distance;
+- cloud disabling;
+- optional shadow removal.
+
+Deep culling, mesh pruning, buffer reuse and render-thread scheduling are preferred because they can reduce work without intentionally lowering texture/detail quality.
+
+## Java vs native/GPU code
+
+Java is sufficient for the current phase.
+
+A native library is not automatically faster here because the main opportunities are inside Minecraft's renderer data structures and OpenGL submission path. Native code becomes interesting later only for a measured hotspot such as:
+
+- highly specialized frustum/occlusion math;
+- SIMD batch processing;
+- a reusable native allocator.
+
+GPU shader changes are a separate path and should not be used to hide CPU-side renderer inefficiencies.
+
+## Validation
+
+Every deep renderer change must pass:
+
+1. GitHub Actions Gradle build;
+2. client startup with default config;
+3. resource reload;
+4. world join/leave;
+5. F3+A style chunk rebuild;
+6. teleport and fast camera movement;
+7. particle storm;
+8. translucent blocks;
+9. entity-heavy scene;
+10. visual comparison against vanilla.
+
+Performance measurements should compare frame time, not only average FPS.
+
+## Current priority
+
+The highest-value implementation sequence for Optimizator is:
+
+particle pre-allocation filter -> chunk upload scheduling -> chunk visibility/occlusion -> rebuild cancellation/prioritization -> buffer reuse -> block-face culling -> deep entity culling -> optional native/GPU experiments.
