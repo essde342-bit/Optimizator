@@ -27,7 +27,14 @@ public abstract class ClientWorldMixin {
             double velocityZ,
             CallbackInfo callbackInfo
     ) {
-        if (!OptimizatorRuntime.allowParticle(force)) {
+        if (!OptimizatorRuntime.allowParticle(
+                parameters,
+                force,
+                canSpawnOnMinimal,
+                x,
+                y,
+                z
+        )) {
             callbackInfo.cancel();
         }
     }
