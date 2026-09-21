@@ -25,6 +25,8 @@ public final class PerformanceProfiler {
     private static double averageFrameMs;
     private static double onePercentLowMs = 0.0D;
     private static long worstFrameNanos;
+    private static long[] frameSamples = new long[120];
+    private static int frameSampleCount;
 
     private PerformanceProfiler() {}
 
@@ -42,9 +44,18 @@ public final class PerformanceProfiler {
         double ms = frameNanos / 1_000_000.0D;
         averageFrameMs += (ms - averageFrameMs) / Math.min(sampleFrames, 120);
         worstFrameNanos = Math.max(worstFrameNanos, frameNanos);
+        frameSamples[frameSampleCount++] = frameNanos;
 
-        if (sampleFrames >= 120) {
-            onePercentLowMs = worstFrameNanos / 1_000_000.0D;
+        if (frameSampleCount >= frameSamples.length) {
+            java.util.Arrays.sort(frameSamples);
+            int lowIndex = Math.max(0, frameSamples.length - Math.max(1, frameSamples.length / 100));
+            long slowestOnePercentAverage = 0L;
+            int count = frameSamples.length - lowIndex;
+            for (int i = lowIndex; i < frameSamples.length; i++) {
+                slowestOnePercentAverage += frameSamples[i];
+            }
+            onePercentLowMs = (slowestOnePercentAverage / (double) count) / 1_000_000.0D;
+            frameSampleCount = 0;
             sampleFrames = 0;
             worstFrameNanos = 0L;
         }
@@ -96,9 +107,12 @@ public final class PerformanceProfiler {
         chunkUploadTasks += tasks;
     }
 
-    public static void recordParticle(boolean created) {
-        if (created) particleCreated++;
-        else particleRejected++;
+    public static void recordParticleCreated() {
+        particleCreated++;
+    }
+
+    public static void recordParticleRejected() {
+        particleRejected++;
     }
 
     public static void resetCounters() {
@@ -106,6 +120,17 @@ public final class PerformanceProfiler {
         chunkUploadTasks = 0L;
         particleCreated = 0L;
         particleRejected = 0L;
+        frameStart = 0L;
+        frameSampleCount = 0;
+        sampleFrames = 0;
+        averageFrameMs = 0.0D;
+        onePercentLowMs = 0.0D;
+        worstFrameNanos = 0L;
+        frameNanos = 0L;
+        worldNanos = 0L;
+        entitiesNanos = 0L;
+        blockEntitiesNanos = 0L;
+        particlesNanos = 0L;
     }
 
     public static double frameMs() {
