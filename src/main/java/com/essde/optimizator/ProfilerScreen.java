@@ -10,86 +10,111 @@ public final class ProfilerScreen extends Screen {
     private final Screen parent;
 
     public ProfilerScreen(Screen parent) {
-        super(Text.literal("Optimizator Profiler"));
+        super(Text.translatable("screen.profiler.title"));
         this.parent = parent;
     }
 
     @Override
     protected void init() {
-        int width = Math.min(300, this.width - 20);
+        int width = Math.min(310, this.width - 18);
         int left = (this.width - width) / 2;
 
         addDrawableChild(ButtonWidget.builder(
-                Text.literal("Profiler: " + (OptimizatorConfig.profilerEnabled ? "ON" : "OFF")),
+                Text.translatable("profiler.option.enabled",
+                        status(OptimizatorConfig.profilerEnabled)),
                 button -> {
-                    OptimizatorConfig.profilerEnabled = !OptimizatorConfig.profilerEnabled;
-                    button.setMessage(Text.literal(
-                            "Profiler: " + (OptimizatorConfig.profilerEnabled ? "ON" : "OFF")));
+                    OptimizatorConfig.profilerEnabled =
+                            !OptimizatorConfig.profilerEnabled;
+                    if (OptimizatorConfig.profilerEnabled) {
+                        OptimizatorConfig.enabled = true;
+                    }
+                    button.setMessage(Text.translatable(
+                            "profiler.option.enabled",
+                            status(OptimizatorConfig.profilerEnabled)));
                     OptimizatorConfig.save();
-                }).dimensions(left, 65, width, 20).build());
+                }).dimensions(left, rowY(0), width, 20).build());
 
         addDrawableChild(ButtonWidget.builder(
-                Text.literal("Overlay: " + (OptimizatorConfig.profilerOverlay ? "ON" : "OFF")),
+                Text.translatable("profiler.option.overlay",
+                        status(OptimizatorConfig.profilerOverlay)),
                 button -> {
-                    OptimizatorConfig.profilerOverlay = !OptimizatorConfig.profilerOverlay;
+                    OptimizatorConfig.profilerOverlay =
+                            !OptimizatorConfig.profilerOverlay;
                     if (OptimizatorConfig.profilerOverlay) {
                         OptimizatorConfig.profilerEnabled = true;
                         OptimizatorConfig.enabled = true;
                     }
-                    button.setMessage(Text.literal(
-                            "Overlay: " + (OptimizatorConfig.profilerOverlay ? "ON" : "OFF")));
+                    button.setMessage(Text.translatable(
+                            "profiler.option.overlay",
+                            status(OptimizatorConfig.profilerOverlay)));
                     OptimizatorConfig.save();
-                }).dimensions(left, 90, width, 20).build());
+                }).dimensions(left, rowY(1), width, 20).build());
 
         addDrawableChild(ButtonWidget.builder(
-                Text.literal("Reset profiler counters"),
+                Text.translatable("profiler.option.reset"),
                 button -> PerformanceProfiler.resetCounters()
-        ).dimensions(left, 115, width, 20).build());
+        ).dimensions(left, rowY(2), width, 20).build());
 
         addDrawableChild(ButtonWidget.builder(
-                Text.literal("Done"),
+                Text.translatable("profiler.navigation.done"),
                 button -> this.client.setScreen(parent)
-        ).dimensions(left, 145, width, 20).build());
+        ).dimensions(left, rowY(3), width, 20).build());
+    }
+
+    private int rowY(int row) {
+        return 80 + row * 22;
+    }
+
+    private String status(boolean value) {
+        return Text.translatable(value
+                ? "particles.status.on"
+                : "particles.status.off").getString();
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context, mouseX, mouseY, delta);
 
-        int width = Math.min(340, this.width - 10);
+        int width = Math.min(330, this.width - 10);
         int left = (this.width - width) / 2;
-        int top = 35;
-        int bottom = Math.min(this.height - 8, 390);
+        int top = 28;
+        int bottom = this.height - 6;
 
         context.fill(left, top, left + width, bottom, 0xD0101010);
+        context.fill(left + 1, top + 1, left + width - 1, top + 2, 0xFF3F3F3F);
+
         context.drawCenteredTextWithShadow(
-                this.textRenderer, this.title, this.width / 2, 44, 0xFFFFFFFF);
+                this.textRenderer, this.title, this.width / 2, 35, 0xFFFFFFFF);
 
         MinecraftClient client = this.client;
         if (client != null) {
-            int y = 180;
-            drawStat(context, "FPS", Integer.toString(client.getCurrentFps()), left + 10, y); y += 15;
-            drawStat(context, "Frame", format(PerformanceProfiler.frameMs()) + " ms", left + 10, y); y += 15;
-            drawStat(context, "Average", format(PerformanceProfiler.averageFrameMs()) + " ms", left + 10, y); y += 15;
-            drawStat(context, "1% slow-frame average", format(PerformanceProfiler.onePercentLowMs()) + " ms", left + 10, y); y += 15;
-            drawStat(context, "World total", format(PerformanceProfiler.worldMs()) + " ms", left + 10, y); y += 15;
-            drawStat(context, "World exclusive", format(PerformanceProfiler.exclusiveWorldMs()) + " ms", left + 10, y); y += 15;
-            drawStat(context, "Entities", format(PerformanceProfiler.entitiesMs()) + " ms", left + 10, y); y += 15;
-            drawStat(context, "Block entities", format(PerformanceProfiler.blockEntitiesMs()) + " ms", left + 10, y); y += 15;
-            drawStat(context, "Particles", format(PerformanceProfiler.particlesMs()) + " ms", left + 10, y); y += 15;
-            drawStat(context, "Chunk upload", format(PerformanceProfiler.chunkUploadMs()) + " ms", left + 10, y); y += 15;
-            drawStat(context, "Particle created", Long.toString(PerformanceProfiler.particlesCreated()), left + 10, y); y += 15;
-            drawStat(context, "Particle rejected", Long.toString(PerformanceProfiler.particlesRejected()), left + 10, y); y += 15;
-            drawStat(context, "TOP BOTTLENECK", PerformanceProfiler.bottleneckName(client), left + 10, y);
+            int y = 146;
+            drawStat(context, "profiler.stat.fps", Integer.toString(client.getCurrentFps()), left + 10, y); y += 14;
+            drawStat(context, "profiler.stat.frame", format(PerformanceProfiler.frameMs()) + " ms", left + 10, y); y += 14;
+            drawStat(context, "profiler.stat.average", format(PerformanceProfiler.averageFrameMs()) + " ms", left + 10, y); y += 14;
+            drawStat(context, "profiler.stat.low", format(PerformanceProfiler.onePercentLowMs()) + " ms", left + 10, y); y += 14;
+            drawStat(context, "profiler.stat.world", format(PerformanceProfiler.worldMs()) + " ms", left + 10, y); y += 14;
+            drawStat(context, "profiler.stat.entities", format(PerformanceProfiler.entitiesMs()) + " ms", left + 10, y); y += 14;
+            drawStat(context, "profiler.stat.particles", format(PerformanceProfiler.particlesMs()) + " ms", left + 10, y); y += 14;
+            drawStat(context, "profiler.stat.chunk_upload", format(PerformanceProfiler.chunkUploadMs()) + " ms", left + 10, y); y += 14;
+            drawStat(context, "profiler.stat.top", PerformanceProfiler.bottleneckName(client), left + 10, y);
         }
+
+        context.drawTextWithShadow(
+                this.textRenderer,
+                Text.translatable("profiler.help"),
+                left + 10,
+                bottom - 18,
+                0xFF777777
+        );
 
         super.render(context, mouseX, mouseY, delta);
     }
 
-    private void drawStat(DrawContext context, String name, String value, int x, int y) {
+    private void drawStat(DrawContext context, String key, String value, int x, int y) {
         context.drawTextWithShadow(
                 this.textRenderer,
-                Text.literal(name + ": " + value),
+                Text.translatable(key, value),
                 x, y, 0xFFE0E0E0);
     }
 
