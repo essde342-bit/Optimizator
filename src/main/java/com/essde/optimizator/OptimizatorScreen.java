@@ -274,7 +274,9 @@ public final class OptimizatorScreen extends Screen {
     }
 
     private int rowY(int row) {
-        return 94 + row * 23;
+        int navigationY = this.height - 27;
+        int startY = Math.max(69, Math.min(94, navigationY - (6 * 20) - 8));
+        return startY + row * 20;
     }
 
     private void addHelp(ClickableWidget widget, String helpKey) {
