@@ -5,7 +5,6 @@ import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.registry.Registries;
-import net.minecraft.util.math.Vec3d;
 
 public final class OptimizatorRuntime {
     private static final int CONTROL_INTERVAL_TICKS = 40;
@@ -306,9 +305,15 @@ public final class OptimizatorRuntime {
         return currentParticleBudget;
     }
 
+    public static boolean isFarEntityCullingEnabled() {
+        return OptimizatorConfig.enabled && OptimizatorConfig.deepEntityCulling;
+    }
+
     public static boolean shouldCullFarEntity(
             net.minecraft.entity.Entity entity,
-            Vec3d cameraPos
+            double cameraX,
+            double cameraY,
+            double cameraZ
     ) {
         if (!OptimizatorConfig.enabled || !OptimizatorConfig.deepEntityCulling) {
             return false;
@@ -327,7 +332,10 @@ public final class OptimizatorRuntime {
             return false;
         }
 
-        double distance = entity.squaredDistanceTo(cameraPos);
+        double dx = entity.getX() - cameraX;
+        double dy = entity.getY() - cameraY;
+        double dz = entity.getZ() - cameraZ;
+        double distance = dx * dx + dy * dy + dz * dz;
         double limit = OptimizatorConfig.farEntityCullDistance;
         return distance > limit * limit;
     }
