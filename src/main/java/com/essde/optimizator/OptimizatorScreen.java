@@ -67,14 +67,20 @@ public final class OptimizatorScreen extends Screen {
                     () -> OptimizatorConfig.cullItemEntities,
                     value -> {
                         OptimizatorConfig.cullItemEntities = value;
-                        if (value) OptimizatorConfig.enabled = true;
+                        if (value) {
+                            OptimizatorConfig.deepEntityCulling = true;
+                            OptimizatorConfig.enabled = true;
+                        }
                     });
 
             addToggle(left, 1, "optimizator.option.xp_culling", "optimizator.help.xp_culling",
                     () -> OptimizatorConfig.cullExperienceOrbs,
                     value -> {
                         OptimizatorConfig.cullExperienceOrbs = value;
-                        if (value) OptimizatorConfig.enabled = true;
+                        if (value) {
+                            OptimizatorConfig.deepEntityCulling = true;
+                            OptimizatorConfig.enabled = true;
+                        }
                     });
 
             addSlider(left, 2, "optimizator.option.entity_distance", "optimizator.help.entity_distance",
