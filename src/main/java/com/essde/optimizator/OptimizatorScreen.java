@@ -173,7 +173,7 @@ public final class OptimizatorScreen extends Screen {
     ) {
         ButtonWidget button = addDrawableChild(ButtonWidget.builder(
                         Text.translatable(labelKey),
-                        action)
+                        widget -> action.accept(widget))
                 .dimensions(left, rowY(row), contentWidth, 20)
                 .build());
         addHelp(button, helpKey);
