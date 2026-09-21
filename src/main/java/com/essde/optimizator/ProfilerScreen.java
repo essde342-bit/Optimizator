@@ -88,10 +88,9 @@ public final class ProfilerScreen extends Screen {
 
         MinecraftClient client = this.client;
         if (client != null) {
-            int y = 146;
+            int y = 116;
             drawStat(context, "profiler.stat.fps", Integer.toString(client.getCurrentFps()), left + 10, y); y += 14;
             drawStat(context, "profiler.stat.frame", format(PerformanceProfiler.frameMs()) + " ms", left + 10, y); y += 14;
-            drawStat(context, "profiler.stat.average", format(PerformanceProfiler.averageFrameMs()) + " ms", left + 10, y); y += 14;
             drawStat(context, "profiler.stat.low", format(PerformanceProfiler.onePercentLowMs()) + " ms", left + 10, y); y += 14;
             drawStat(context, "profiler.stat.world", format(PerformanceProfiler.worldMs()) + " ms", left + 10, y); y += 14;
             drawStat(context, "profiler.stat.entities", format(PerformanceProfiler.entitiesMs()) + " ms", left + 10, y); y += 14;
