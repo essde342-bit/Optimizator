@@ -25,7 +25,7 @@ public final class PerformanceProfiler {
     private static double averageFrameMs;
     private static double onePercentLowMs = 0.0D;
     private static long worstFrameNanos;
-    private static long[] frameSamples = new long[120];
+    private static long[] frameSamples = new long[600];
     private static int frameSampleCount;
 
     private PerformanceProfiler() {}
