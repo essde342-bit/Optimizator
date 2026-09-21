@@ -21,8 +21,8 @@ public final class OptimizatorConfig {
             FabricLoader.getInstance().getConfigDir().resolve("optimizator.properties");
 
     public static boolean enabled = true;
-    public static boolean adaptive = true;
-    public static boolean particleLimiter = true;
+    public static boolean adaptive = false;
+    public static boolean particleLimiter = false;
     public static boolean particleCulling = false;
     public static boolean deepEntityCulling = false;
     public static boolean fastEntityShadows = false;
@@ -173,8 +173,8 @@ public final class OptimizatorConfig {
 
     public static void resetDefaults() {
         enabled = true;
-        adaptive = true;
-        particleLimiter = true;
+        adaptive = false;
+        particleLimiter = false;
         particleCulling = false;
         deepEntityCulling = false;
         fastEntityShadows = false;
