@@ -19,33 +19,30 @@ public final class OptimizatorConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger("Optimizator");
     private static final Path CONFIG_FILE =
             FabricLoader.getInstance().getConfigDir().resolve("optimizator.properties");
+    private static final int CONFIG_VERSION = 2;
 
-    public static boolean enabled = true;
+    // Master switch is OFF by default. Every optimization feature is also OFF
+    // by default so the first launch never changes rendering behaviour silently.
+    public static boolean enabled = false;
     public static boolean adaptive = false;
     public static boolean particleLimiter = false;
     public static boolean particleCulling = false;
     public static boolean deepEntityCulling = false;
     public static boolean fastEntityShadows = false;
-    public static boolean chunkUploadBudget = true;
-    public static boolean disableCloudsUnderLoad = true;
+    public static boolean chunkUploadBudget = false;
+    public static boolean disableCloudsUnderLoad = false;
     public static boolean profilerEnabled = false;
     public static boolean profilerOverlay = false;
 
     /**
      * 0 = ALL, 1 = DECREASED, 2 = MINIMAL.
-     * The default is ALL so Optimizator does not silently reduce visible
-     * particle density compared with the normal Minecraft setting.
+     * This is neutral while the particle limiter itself is OFF.
      */
     public static int particleQuality = 0;
 
     public static int minRenderDistance = 5;
     public static double minEntityDistance = 0.35D;
     public static int fpsFloor = 35;
-
-    /**
-     * Large enough to stay visually equivalent in normal scenes.
-     * The adaptive controller can lower the effective budget under sustained load.
-     */
     public static int particleBudget = 10000;
 
     public static int farEntityCullDistance = 48;
@@ -71,20 +68,26 @@ public final class OptimizatorConfig {
         try (Reader reader = Files.newBufferedReader(CONFIG_FILE)) {
             properties.load(reader);
 
+            int version = getInt(properties, "config_version", 0);
+            if (version < CONFIG_VERSION) {
+                LOGGER.info("Migrating Optimizator config to version {} with all features disabled by default.",
+                        CONFIG_VERSION);
+                resetDefaults();
+                save();
+                return;
+            }
+
             enabled = getBoolean(properties, "enabled", enabled);
             adaptive = getBoolean(properties, "adaptive", adaptive);
-            particleLimiter =
-                    getBoolean(properties, "particle_limiter", particleLimiter);
-            particleCulling =
-                    getBoolean(properties, "particle_culling", particleCulling);
-            deepEntityCulling =
-                    getBoolean(properties, "deep_entity_culling", deepEntityCulling);
-            fastEntityShadows =
-                    getBoolean(properties, "fast_entity_shadows", fastEntityShadows);
-            chunkUploadBudget =
-                    getBoolean(properties, "chunk_upload_budget", chunkUploadBudget);
+            particleLimiter = getBoolean(properties, "particle_limiter", particleLimiter);
+            particleCulling = getBoolean(properties, "particle_culling", particleCulling);
+            deepEntityCulling = getBoolean(properties, "deep_entity_culling", deepEntityCulling);
+            fastEntityShadows = getBoolean(properties, "fast_entity_shadows", fastEntityShadows);
+            chunkUploadBudget = getBoolean(properties, "chunk_upload_budget", chunkUploadBudget);
             disableCloudsUnderLoad =
                     getBoolean(properties, "disable_clouds_under_load", disableCloudsUnderLoad);
+            profilerEnabled = getBoolean(properties, "profiler_enabled", profilerEnabled);
+            profilerOverlay = getBoolean(properties, "profiler_overlay", profilerOverlay);
 
             particleQuality =
                     clamp(getInt(properties, "particle_quality", particleQuality), 0, 2);
@@ -93,8 +96,7 @@ public final class OptimizatorConfig {
             minEntityDistance =
                     clamp(getDouble(properties, "min_entity_distance", minEntityDistance),
                             0.15D, 1.0D);
-            fpsFloor =
-                    clamp(getInt(properties, "fps_floor", fpsFloor), 20, 120);
+            fpsFloor = clamp(getInt(properties, "fps_floor", fpsFloor), 20, 120);
             particleBudget =
                     clamp(getInt(properties, "particle_budget", particleBudget), 100, 10000);
 
@@ -129,6 +131,7 @@ public final class OptimizatorConfig {
             }
 
             Properties properties = new Properties();
+            properties.setProperty("config_version", Integer.toString(CONFIG_VERSION));
             properties.setProperty("enabled", Boolean.toString(enabled));
             properties.setProperty("adaptive", Boolean.toString(adaptive));
             properties.setProperty("particle_limiter", Boolean.toString(particleLimiter));
@@ -164,7 +167,7 @@ public final class OptimizatorConfig {
                     "particle_reduced", String.join(",", particleReducedTypes));
 
             try (Writer writer = Files.newBufferedWriter(CONFIG_FILE)) {
-                properties.store(writer, "Optimizator - deep client optimization settings");
+                properties.store(writer, "Optimizator - user-controlled deep client optimization settings");
             }
         } catch (IOException exception) {
             LOGGER.warn("Could not save config: {}", CONFIG_FILE, exception);
@@ -172,14 +175,14 @@ public final class OptimizatorConfig {
     }
 
     public static void resetDefaults() {
-        enabled = true;
+        enabled = false;
         adaptive = false;
         particleLimiter = false;
         particleCulling = false;
         deepEntityCulling = false;
         fastEntityShadows = false;
-        chunkUploadBudget = true;
-        disableCloudsUnderLoad = true;
+        chunkUploadBudget = false;
+        disableCloudsUnderLoad = false;
         profilerEnabled = false;
         profilerOverlay = false;
 
