@@ -46,8 +46,8 @@ public final class OptimizatorConfig {
     public static int particleBudget = 10000;
 
     public static int farEntityCullDistance = 48;
-    public static boolean cullItemEntities = true;
-    public static boolean cullExperienceOrbs = true;
+    public static boolean cullItemEntities = false;
+    public static boolean cullExperienceOrbs = false;
     public static int entityShadowDistance = 64;
     public static int particleCullDistance = 128;
     public static int maxChunkUploadsPerFrame = 6;
@@ -203,8 +203,8 @@ public final class OptimizatorConfig {
         particleBudget = 10000;
 
         farEntityCullDistance = 48;
-        cullItemEntities = true;
-        cullExperienceOrbs = true;
+        cullItemEntities = false;
+        cullExperienceOrbs = false;
         entityShadowDistance = 64;
         particleCullDistance = 128;
         maxChunkUploadsPerFrame = 6;
