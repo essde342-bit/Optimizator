@@ -28,7 +28,7 @@ public final class OptimizatorConfig {
     public static boolean fastEntityShadows = false;
     public static boolean chunkUploadBudget = true;
     public static boolean disableCloudsUnderLoad = true;
-    public static boolean profilerEnabled = true;
+    public static boolean profilerEnabled = false;
     public static boolean profilerOverlay = false;
 
     /**
@@ -180,7 +180,7 @@ public final class OptimizatorConfig {
         fastEntityShadows = false;
         chunkUploadBudget = true;
         disableCloudsUnderLoad = true;
-        profilerEnabled = true;
+        profilerEnabled = false;
         profilerOverlay = false;
 
         particleQuality = 0;
