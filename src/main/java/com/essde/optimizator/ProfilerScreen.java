@@ -67,7 +67,7 @@ public final class ProfilerScreen extends Screen {
             drawStat(context, "FPS", Integer.toString(client.getCurrentFps()), left + 10, y); y += 15;
             drawStat(context, "Frame", format(PerformanceProfiler.frameMs()) + " ms", left + 10, y); y += 15;
             drawStat(context, "Average", format(PerformanceProfiler.averageFrameMs()) + " ms", left + 10, y); y += 15;
-            drawStat(context, "1% sample", format(PerformanceProfiler.onePercentLowMs()) + " ms", left + 10, y); y += 15;
+            drawStat(context, "1% slow-frame average", format(PerformanceProfiler.onePercentLowMs()) + " ms", left + 10, y); y += 15;
             drawStat(context, "World", format(PerformanceProfiler.worldMs()) + " ms", left + 10, y); y += 15;
             drawStat(context, "Entities", format(PerformanceProfiler.entitiesMs()) + " ms", left + 10, y); y += 15;
             drawStat(context, "Block entities", format(PerformanceProfiler.blockEntitiesMs()) + " ms", left + 10, y); y += 15;
