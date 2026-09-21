@@ -16,6 +16,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(WorldRenderer.class)
 public abstract class WorldRendererProfilerMixin {
+    @Inject(method = "renderMain", at = @At("HEAD"))
+    private void optimizator$beginWorld(Object frameGraphBuilder, Object frustum, Camera camera,
+                                        org.joml.Matrix4f positionMatrix, org.joml.Matrix4f projectionMatrix,
+                                        Object fog, boolean renderBlockOutline, boolean renderEntityOutlines,
+                                        RenderTickCounter renderTickCounter, Object profiler, CallbackInfo callbackInfo) {
+        if (OptimizatorConfig.profilerEnabled) PerformanceProfiler.beginWorld();
+    }
+
+    @Inject(method = "renderMain", at = @At("RETURN"))
+    private void optimizator$endWorld(Object frameGraphBuilder, Object frustum, Camera camera,
+                                      org.joml.Matrix4f positionMatrix, org.joml.Matrix4f projectionMatrix,
+                                      Object fog, boolean renderBlockOutline, boolean renderEntityOutlines,
+                                      RenderTickCounter renderTickCounter, Object profiler, CallbackInfo callbackInfo) {
+        if (OptimizatorConfig.profilerEnabled) PerformanceProfiler.endWorld();
+    }
     @Inject(method = "renderEntities", at = @At("HEAD"))
     private void optimizator$beginEntities(
             MatrixStack matrices,
