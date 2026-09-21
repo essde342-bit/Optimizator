@@ -335,11 +335,13 @@ public final class OptimizatorRuntime {
             return false;
         }
 
-        if (particlesInWindow >= currentParticleBudget) {
-            return false;
+        if (OptimizatorConfig.particleLimiter) {
+            if (particlesInWindow >= currentParticleBudget) {
+                return false;
+            }
+            particlesInWindow++;
         }
 
-        particlesInWindow++;
         return true;
     }
 
