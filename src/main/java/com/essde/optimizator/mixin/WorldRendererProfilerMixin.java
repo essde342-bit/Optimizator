@@ -6,6 +6,10 @@ import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.WorldRenderer;
+import net.minecraft.client.render.FrameGraphBuilder;
+import net.minecraft.client.render.Fog;
+import net.minecraft.client.render.Frustum;
+import net.minecraft.util.profiler.Profiler;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import java.util.List;
@@ -17,10 +21,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(WorldRenderer.class)
 public abstract class WorldRendererProfilerMixin {
     @Inject(method = "renderMain", at = @At("HEAD"))
-    private void optimizator$beginWorld(Object frameGraphBuilder, Object frustum, Camera camera,
+    private void optimizator$beginWorld(FrameGraphBuilder frameGraphBuilder, Frustum frustum, Camera camera,
                                         org.joml.Matrix4f positionMatrix, org.joml.Matrix4f projectionMatrix,
-                                        Object fog, boolean renderBlockOutline, boolean renderEntityOutlines,
-                                        RenderTickCounter renderTickCounter, Object profiler, CallbackInfo callbackInfo) {
+                                        Fog fog, boolean renderBlockOutline, boolean renderEntityOutlines,
+                                        RenderTickCounter renderTickCounter, Profiler profiler, CallbackInfo callbackInfo) {
         if (OptimizatorConfig.profilerEnabled) PerformanceProfiler.beginWorld();
     }
 
