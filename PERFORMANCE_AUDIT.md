@@ -1,172 +1,421 @@
-# Performance audit — Minecraft 1.21.4 client
+# Optimizator — deep performance audit
+## Minecraft Java 1.21.4 Fabric
 
-## Goal
+Audit scope: current `main` branch after the profiler, particle and chunk-upload changes.
 
-Optimizator is intended to increase FPS by reducing work inside the client renderer, not by simply forcing low vanilla video settings.
+## 1. Current status
 
-Preferred order:
+### Build/runtime correctness
 
-1. remove work that cannot affect the final image;
-2. reuse data instead of allocating it repeatedly;
-3. move independent work away from the render thread;
-4. batch GPU uploads and draw work;
-5. only then use adaptive visual reductions when the user enables them.
+The current codebase had several concrete issues during this audit:
 
-This is the same general direction used by modern renderer optimizers such as Sodium: chunk building, culling, buffer management, and render submission are first-class optimization targets rather than only video-option changes. Sodium exposes settings for chunk update threading, deferred chunk updates, block-face culling, fog occlusion and entity culling. turn645209search0 turn645209search5
+- missing `MinecraftClient` import in `ProfilerScreen`;
+- missing `PerformanceProfiler` import in `ChunkBuilderMixin`;
+- invalid `@Shadow` of inherited `Screen.addDrawableChild` from a `GameMenuScreen` mixin;
+- entity culling modified the renderer's entity list in-place;
+- profiler's so-called 1% low metric was actually the single worst frame;
+- profiler was enabled by default, adding measurement overhead to the normal render loop;
+- particle filtering performed registry identifier conversion and wall-clock reads for every particle spawn even when no particle filtering rule was configured.
 
-## Current implementation
+These have been corrected in the current branch.
 
-### 1. Pre-allocation particle filtering
+The last GitHub Actions run at the time of this audit is still being executed, so the final current-head compile/runtime result is intentionally not claimed until that run finishes.
 
-The particle filter runs from ClientWorld.addParticle(...) before Minecraft creates the Particle object.
+## 2. Important architectural finding
 
-Supported controls:
+Optimizator is currently **not yet a Sodium-class renderer replacement**.
 
-- ALL / DECREASED / MINIMAL particle quality;
-- global particles on/off;
-- distance culling before allocation;
-- particles-per-second budget;
-- exact particle type disable list;
-- exact particle type reduced list;
-- trailing * wildcards such as minecraft:smoke*.
+The largest remaining performance gap is architectural:
 
-This goes deeper than changing the vanilla particle option because unwanted particles are rejected before they enter the ParticleManager queues.
+`WorldRenderer -> vanilla BuiltChunkStorage -> vanilla ChunkBuilder -> vanilla SectionBuilder -> vanilla GPU upload`
 
-Sodium exposes the same three conceptual quality levels, while dedicated particle optimization mods also demonstrate the value of culling invisible particles and filtering by type. turn645209search0 turn645209search5
+is still fundamentally the vanilla pipeline.
 
-### 2. Chunk GPU-upload budgeting
+The current mod mostly wraps parts of that pipeline with:
 
-The current ChunkBuilderMixin limits how many queued GPU upload tasks can execute in one frame and can additionally stop after a configured time budget.
+- upload budgeting;
+- particle filtering;
+- conservative entity filtering;
+- adaptive options;
+- profiling.
 
-The target is not to reduce final geometry quality, but to prevent a large batch of chunk uploads from creating a render-thread spike.
+Those can help, but they do not yet replace the expensive mesh/culling/scheduling decisions.
 
-Vanilla 1.21.4 ChunkBuilder contains a dedicated uploadQueue and scheduler, so this is a genuine renderer-internal hook rather than a video-option change. turn495864search1
+## 3. Highest-value optimization targets
 
-### 3. Entity pressure
+### P0 — Chunk rebuild coalescing
 
-Current code uses:
+Implement one pending update state per render section.
 
-- adaptive entity-distance scaling;
-- optional far culling for item entities and XP orbs.
+Instead of allowing:
 
-This is intentionally conservative. Sodium's entity culling uses chunk visibility information to skip entities hidden inside non-visible chunks, which is deeper than a distance check. turn645209search5
+`update -> rebuild`
+`update -> rebuild`
+`update -> rebuild`
 
-## Deep renderer targets
+maintain:
 
-### A. Section visibility and occlusion
+`update + update + update -> one rebuild`
 
-Vanilla 1.21.4 already has:
+The pending state should merge update types and retain only the strongest required rebuild.
 
-- a Frustum;
-- built chunk storage;
-- chunk occlusion data;
-- an Octree;
-- a chunk-rendering data preparer.
+Sodium's current RenderSectionManager explicitly tracks pending updates and joins compatible update types instead of blindly submitting duplicate work. citeturn861066search2
 
-WorldRenderer also exposes an updateChunks stage and an entity collection stage. turn442879search0 turn965233search3 turn965233search5
+### P0 — Obsolete rebuild cancellation
 
-The next serious optimization target is therefore not another distance slider. It is a renderer-side visibility pipeline that avoids traversing or rendering sections known to be invisible.
+A rebuild result must carry a section generation/version.
 
-Sodium's current renderer schedules asynchronous culling work and consumes the resulting render lists instead of rebuilding visibility from scratch on the render thread. turn645209search8
+Before applying a completed mesh:
 
-### B. Chunk mesh generation
+`result.version == section.currentVersion`
 
-ChunkBuilder.BuiltChunk owns rebuild/sort tasks and the 1.21.4 pipeline contains a dedicated SectionBuilder. turn442879search1 turn965233search1
+Only then may the result become renderable.
 
-Long-term implementation should investigate:
+Otherwise the result is destroyed/discarded.
 
-- duplicate rebuild requests;
-- rebuild prioritization by camera distance;
-- cancellation of obsolete rebuilds;
-- allocation reuse for mesh buffers;
-- minimizing temporary Java objects while emitting quads;
-- separating opaque and translucent work earlier.
+This prevents wasted CPU and GPU work when the same section has changed again while an old build is still running.
 
-This area has high performance leverage, but it is also where incorrect mixins can corrupt buffers or race with resource reloads.
+### P0 — Section visibility graph
 
-### C. Buffer allocation and upload reuse
+Do not independently test every chunk section from scratch every frame.
 
-Sodium's development history explicitly contains work on buffer reuse because repeated buffer allocations can worsen frame-time stability during chunk loading. turn645209search1
+Create a compact render-section graph with:
 
-Optimizator should therefore avoid an implementation that merely throttles uploads while still producing excessive short-lived buffers. The deeper goal is to reduce allocation volume itself.
+- section coordinates;
+- neighboring links;
+- opaque/transparent presence flags;
+- dirty state;
+- current mesh state;
+- last visible frame;
+- rebuild generation.
 
-### D. Block-face submission
+The visibility graph should be traversed from the camera section.
 
-Sodium exposes a block-face-culling option because eliminating faces which cannot be seen can remove geometry very early in the pipeline. turn645209search5
+Sodium's renderer uses a render-section tree plus cull results and asynchronous culling tasks. citeturn861066search2
 
-For Optimizator, this is a high-value target because it can preserve visual output while reducing vertex generation and GPU bandwidth. It should be implemented inside chunk mesh generation, not by changing texture or graphics settings.
+### P0 — Occlusion traversal
 
-### E. Fog-aware visibility
+Use existing chunk occlusion information before mesh submission.
 
-Vanilla has a dedicated fog/render path, and Sodium exposes fog occlusion to skip chunks fully hidden by fog. turn645209search0 turn645209search5
+Target pipeline:
 
-This can be added as a visibility decision without reducing requested graphics quality, but the implementation must account for underwater, lava, blindness/darkness and unusual camera angles.
+`camera -> frustum -> section graph -> occlusion -> render list`
 
-### F. Entity visibility
+Do not rebuild the same visibility information during the draw phase.
 
-The deeper end goal is chunk-visibility-based entity culling rather than simply reducing entity distance.
+Minecraft 1.21.4 already exposes Frustum, built chunks, ChunkRenderingDataPreparer, ChunkBuilder and captured-frustum data in WorldRenderer. citeturn618935search0
 
-That work belongs close to WorldRenderer.getEntitiesToRender(...) and the chunk visibility data so the renderer can reject entities behind fully occluding terrain. The method exists directly in vanilla 1.21.4. turn442879search0
+### P1 — Block-face culling during mesh generation
 
-## Adaptive controller
+Remove faces before vertex generation.
 
-The adaptive controller currently has hysteresis and reacts every 40 client ticks.
+Target:
 
-This is intentionally not the main optimization mechanism. Dynamic render distance can cause expensive chunk refreshes/rebuilds; Sodium has an issue documenting that dynamic render-distance changes on Minecraft 1.21.4 can trigger full rendering refresh behavior. turn645209search2
+`block -> neighbor visibility -> emit only required faces`
 
-Future revisions should prefer:
+not:
 
-1. deep culling;
-2. scheduling and batching;
-3. buffer reuse;
-4. only then adaptive visual changes.
+`block -> build all faces -> discard later`
 
-## Visual-preservation rule
+Sodium explicitly exposes block-face culling because eliminating faces early reduces rendering work substantially. citeturn861066search0
 
-Defaults should preserve vanilla visual output wherever possible.
+### P1 — Buffer reuse
 
-A setting that changes the image should be explicit:
+The current mod throttles uploads but still relies on vanilla allocation/lifetime decisions.
 
-- particle quality;
-- particle filters;
-- adaptive render distance;
-- adaptive entity distance;
-- cloud disabling;
-- optional shadow removal.
+Next phase should investigate:
 
-Deep culling, mesh pruning, buffer reuse and render-thread scheduling are preferred because they can reduce work without intentionally lowering texture/detail quality.
+- reusable per-section vertex storage;
+- reuse of upload buffers;
+- reuse of index buffers;
+- minimizing temporary BuiltBuffer lifetime;
+- reducing CPU/GPU synchronization.
 
-## Java vs native/GPU code
+### P1 — Rebuild prioritization
 
-Java is sufficient for the current phase.
+Priority should incorporate:
 
-A native library is not automatically faster here because the main opportunities are inside Minecraft's renderer data structures and OpenGL submission path. Native code becomes interesting later only for a measured hotspot such as:
+`visibility + camera distance + urgency + age`
 
-- highly specialized frustum/occlusion math;
-- SIMD batch processing;
-- a reusable native allocator.
+Suggested order:
 
-GPU shader changes are a separate path and should not be used to hide CPU-side renderer inefficiencies.
+`VISIBLE_NEAR > VISIBLE_FAR > INVISIBLE_NEAR > INVISIBLE_FAR`
 
-## Validation
+but an old invisible task must still be prevented from starving if it is repeatedly postponed.
 
-Every deep renderer change must pass:
+### P1 — Translucent sorting
 
-1. GitHub Actions Gradle build;
-2. client startup with default config;
-3. resource reload;
-4. world join/leave;
-5. F3+A style chunk rebuild;
-6. teleport and fast camera movement;
-7. particle storm;
-8. translucent blocks;
-9. entity-heavy scene;
-10. visual comparison against vanilla.
+Translucent geometry should not be resorted when the camera movement is too small to affect ordering materially.
 
-Performance measurements should compare frame time, not only average FPS.
+Use a camera-motion threshold and invalidate the sort only when the ordering can actually change.
 
-## Current priority
+This must be validated aggressively because translucent correctness is a common source of visual regressions.
 
-The highest-value implementation sequence for Optimizator is:
+### P1 — Fog occlusion
 
-particle pre-allocation filter -> chunk upload scheduling -> chunk visibility/occlusion -> rebuild cancellation/prioritization -> buffer reuse -> block-face culling -> deep entity culling -> optional native/GPU experiments.
+Skip sections that are guaranteed to be completely hidden by fog.
+
+Sodium exposes fog occlusion as a renderer optimization, especially useful in heavy fog environments such as underwater scenes. citeturn861066search0
+
+### P2 — Chunk-visibility entity culling
+
+The current entity culling is intentionally conservative and is **not** the final design.
+
+The correct deep implementation should reuse section visibility:
+
+`entity -> containing section -> visible section?`
+
+If the section is not visible, the entity renderer should be skipped.
+
+Sodium documents this exact principle: entity culling can reuse chunk visibility data without adding a second expensive visibility system. citeturn861066search0
+
+## 4. Current code-specific findings
+
+### Particle filtering
+
+The new fast path is substantially better than the initial implementation.
+
+When the user has not configured per-type rules, the code no longer needs to convert the particle type to an Identifier string for every particle.
+
+Camera position is cached once per client tick instead of querying it for every spawned particle.
+
+The remaining optimization target is the **particle update/render loop itself**.
+
+ParticleManager has:
+
+- particle queues by texture sheet;
+- a particle tick path;
+- a render path;
+- particle-group limits.
+
+Minecraft 1.21.4 also exposes ParticleManager's per-texture-sheet queues and update/render methods. citeturn638663search0
+
+The next particle phase should therefore optimize:
+
+`spawn -> update -> visibility -> batch -> render`
+
+instead of only:
+
+`spawn -> reject`
+
+### Chunk upload budget
+
+The current upload limiter works at the upload-queue boundary, which is useful for preventing a burst of GPU uploads from monopolizing the render thread.
+
+However, it is not yet a true chunk scheduling system.
+
+Minecraft 1.21.4 ChunkBuilder already contains:
+
+- scheduler;
+- executor;
+- consecutive executor;
+- upload queue;
+- buffer pools;
+- SectionBuilder;
+- queued task count.
+
+citeturn684312view0
+
+Therefore future work should move upstream:
+
+`schedule task -> prioritize/cancel -> build -> upload`
+
+rather than only:
+
+`upload -> throttle`
+
+### Profiler
+
+Profiler is now opt-in by default.
+
+This is important because a performance mod should not permanently add timing calls to the hot render path.
+
+The profiler should remain a debug instrument, not part of the default frame loop.
+
+The current profiler also distinguishes the 1% slow-frame sample from the worst single frame.
+
+### Adaptive controller
+
+The controller currently changes vanilla visual settings rather than optimizing renderer internals.
+
+Because the project requirement is visual parity, adaptive mode is now opt-in by default.
+
+Long term the controller should use:
+
+- frame time;
+- CPU stage time;
+- chunk queue pressure;
+- upload queue pressure;
+- visible section count;
+- entity count;
+- particle workload;
+
+to choose **which internal workload to schedule**, not simply which vanilla setting to lower.
+
+## 5. Memory/GC priorities
+
+The next profiling phase should measure allocations in:
+
+- SectionBuilder;
+- block model iteration;
+- translucent sorting;
+- entity state creation;
+- block-entity render state;
+- particle creation;
+- upload preparation.
+
+Preferred data model:
+
+- primitive coordinates/flags where possible;
+- reusable temporary arrays;
+- compact bitsets for visibility;
+- generation counters instead of object-heavy dirty-state objects;
+- reuse of mesh metadata.
+
+Avoid introducing global object pools without measurements. Pools can create retention and synchronization costs.
+
+## 6. Multi-threading model
+
+Do not create a generic "more threads = faster" system.
+
+Use a pipeline:
+
+`render-section update`
+-> `immutable chunk snapshot`
+-> `mesh build worker`
+-> `completed build queue`
+-> `render-thread upload`
+
+Important constraints:
+
+- never read mutable chunk state from worker threads after snapshot creation;
+- never mutate render-section ownership from workers;
+- every result needs a generation/version;
+- cancelled builds must release buffers;
+- resource reload must invalidate outstanding work.
+
+Sodium's current architecture uses asynchronous culling and carefully manages safe read phases around render-section data. citeturn861066search2
+
+## 7. Compatibility audit
+
+Before adding deep renderer replacements, detect installed optimization mods.
+
+Potential cooperation rules:
+
+### Sodium present
+
+Do not duplicate:
+
+- chunk renderer;
+- block-face culling;
+- Sodium section culling;
+- Sodium entity culling;
+- Sodium buffer management.
+
+Instead provide only Optimizator features that operate outside those paths.
+
+### ImmediatelyFast present
+
+Avoid duplicate GUI/buffer batching hooks.
+
+### Entity Culling present
+
+Do not install a second entity visibility system unless Optimizator can prove that it is complementary.
+
+### FerriteCore/Lithium
+
+These mostly target memory/server simulation respectively, so renderer optimizations remain separate.
+
+## 8. Benchmark methodology
+
+Never accept an optimization from average FPS alone.
+
+Record:
+
+- average FPS;
+- 1% low;
+- worst frame;
+- frame-time mean;
+- frame-time variance;
+- chunk rebuild duration;
+- chunk upload duration;
+- visible section count;
+- pending section count;
+- particle count;
+- entity count;
+- Java allocation rate;
+- GC pauses.
+
+Required scenes:
+
+1. empty plains;
+2. dense forest;
+3. village/city;
+4. many entities;
+5. heavy particles;
+6. underwater/fog;
+7. translucent glass/water;
+8. fast flight/teleport;
+9. rapid block updates;
+10. resource-pack-heavy scene.
+
+Comparison matrix:
+
+`Vanilla`
+`Vanilla + Optimizator`
+`Sodium`
+`Sodium + Optimizator`
+
+Every comparison must use the same world, camera path, resolution, renderer backend and graphics configuration.
+
+## 9. Recommended implementation order
+
+### Phase A
+Fix/build/runtime correctness.
+
+### Phase B
+Profiler and benchmark harness.
+
+### Phase C
+Section dirty-state merging.
+
+### Phase D
+Generation-based rebuild cancellation.
+
+### Phase E
+Render-section visibility graph.
+
+### Phase F
+Async culling.
+
+### Phase G
+Block-face culling.
+
+### Phase H
+Mesh/buffer reuse.
+
+### Phase I
+Translucent optimization.
+
+### Phase J
+Entity/block-entity culling from the same section visibility graph.
+
+### Phase K
+Compatibility arbitration with Sodium/ImmediatelyFast/Entity Culling.
+
+### Phase L
+Adaptive scheduler based on measured bottlenecks.
+
+## 10. Principle
+
+Do not optimize:
+
+`lower quality -> less work`
+
+Prefer:
+
+`same image -> less work`
+
+The highest-value Optimizator code will therefore live below the settings layer:
+
+**section scheduling + visibility + mesh generation + buffer lifetime + submission.**
