@@ -6,12 +6,12 @@ Optimizator is built around a different goal from a simple video-settings tweak:
 
 ## Current optimization layer
 
-- Adaptive performance controller with hysteresis.
+- Adaptive performance controller with hysteresis (opt-in; visual-parity safe by default).
 - Adaptive entity-distance scaling.
 - Automatic cloud disabling under sustained load, with restoration.
 - Chunk GPU-upload budgeting to reduce render-thread spikes.
 - Conservative far culling for item entities and XP orbs.
-- Particle filtering before Particle objects are allocated.
+- Particle filtering before Particle objects are allocated (opt-in by default).
 - Particle quality modes: ALL, DECREASED, MINIMAL.
 - Particle budget per second.
 - Optional particle distance culling.
