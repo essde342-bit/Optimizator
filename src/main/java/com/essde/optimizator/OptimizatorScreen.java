@@ -211,6 +211,13 @@ public final class OptimizatorScreen extends Screen {
                             setter.accept(next);
                             if (next && !label.equals("Master switch")) {
                                 OptimizatorConfig.enabled = true;
+                                if (label.equals("Deep entity culling")) {
+                                    OptimizatorConfig.cullItemEntities = true;
+                                    OptimizatorConfig.cullExperienceOrbs = true;
+                                }
+                                if (label.equals("Profiler overlay")) {
+                                    OptimizatorConfig.profilerEnabled = true;
+                                }
                                 if (this.enabledButton != null) {
                                     this.enabledButton.setMessage(
                                             Text.literal("Master switch: ON"));
