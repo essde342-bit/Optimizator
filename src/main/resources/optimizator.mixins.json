@@ -11,7 +11,8 @@
     "ChunkBuilderMixin",
     "MinecraftClientProfilerMixin",
     "WorldRendererProfilerMixin",
-    "ParticleManagerProfilerMixin"
+    "ParticleManagerProfilerMixin",
+    "ScreenAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
