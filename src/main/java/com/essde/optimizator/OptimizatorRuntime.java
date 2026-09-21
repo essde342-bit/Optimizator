@@ -3,6 +3,9 @@ package com.essde.optimizator;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.option.GameOptions;
+import net.minecraft.particle.ParticleEffect;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.math.Vec3d;
 
 public final class OptimizatorRuntime {
     private static final int CONTROL_INTERVAL_TICKS = 40;
@@ -200,9 +203,68 @@ public final class OptimizatorRuntime {
         reductionLevel = 0;
     }
 
-    public static boolean allowParticle(boolean force) {
-        if (!OptimizatorConfig.enabled || force || !OptimizatorConfig.particleLimiter) {
+    /**
+     * This filter runs in ClientWorld before ParticleManager allocates a Particle
+     * object. That is intentionally earlier than a render-time check, so rejected
+     * particles do not create Java objects or enter the particle queues.
+     */
+    public static boolean allowParticle(
+            ParticleEffect parameters,
+            boolean force,
+            boolean canSpawnOnMinimal,
+            double x,
+            double y,
+            double z
+    ) {
+        if (!OptimizatorConfig.enabled || !force && !OptimizatorConfig.particleLimiter) {
             return true;
+        }
+
+        if (parameters == null) {
+            return true;
+        }
+
+        if (force) {
+            return true;
+        }
+
+        if (OptimizatorConfig.particleQuality == 2 && !canSpawnOnMinimal) {
+            return false;
+        }
+
+        String typeId = Registries.PARTICLE_TYPE.getId(parameters.getType()).toString();
+        int typeMode = OptimizatorConfig.getParticleMode(typeId);
+
+        if (typeMode == 2) {
+            return false;
+        }
+
+        if (OptimizatorConfig.particleCulling
+                && MinecraftClient.getInstance().cameraEntity != null) {
+            Vec3d camera = MinecraftClient.getInstance().cameraEntity.getPos();
+            double dx = x - camera.x;
+            double dy = y - camera.y;
+            double dz = z - camera.z;
+            double limit = OptimizatorConfig.particleCullDistance;
+            if (dx * dx + dy * dy + dz * dz > limit * limit) {
+                return false;
+            }
+        }
+
+        double probability = 1.0D;
+
+        if (OptimizatorConfig.particleQuality == 1) {
+            probability *= 0.60D;
+        } else if (OptimizatorConfig.particleQuality == 2) {
+            probability *= 0.25D;
+        }
+
+        if (typeMode == 1) {
+            probability *= 0.50D;
+        }
+
+        if (probability < 1.0D && !sampleParticle(probability, typeId, x, y, z)) {
+            return false;
         }
 
         long now = System.nanoTime();
@@ -219,6 +281,23 @@ public final class OptimizatorRuntime {
         return true;
     }
 
+    private static boolean sampleParticle(
+            double probability,
+            String typeId,
+            double x,
+            double y,
+            double z
+    ) {
+        long bits = Double.doubleToLongBits(x);
+        bits = bits * 31L + Double.doubleToLongBits(y);
+        bits = bits * 31L + Double.doubleToLongBits(z);
+        bits = bits * 31L + typeId.hashCode();
+        bits ^= bits >>> 33;
+        long positive = bits & Long.MAX_VALUE;
+        double normalized = positive / (double) Long.MAX_VALUE;
+        return normalized < probability;
+    }
+
     public static int getReductionLevel() {
         return reductionLevel;
     }
@@ -226,18 +305,17 @@ public final class OptimizatorRuntime {
     public static int getCurrentParticleBudget() {
         return currentParticleBudget;
     }
-}
-
 
     public static boolean shouldCullFarEntity(
             net.minecraft.entity.Entity entity,
-            net.minecraft.util.math.Vec3d cameraPos
+            Vec3d cameraPos
     ) {
         if (!OptimizatorConfig.enabled || !OptimizatorConfig.deepEntityCulling) {
             return false;
         }
 
-        if (entity == null || entity == MinecraftClient.getInstance().player
+        if (entity == null
+                || entity == MinecraftClient.getInstance().player
                 || entity.isSpectator()) {
             return false;
         }
@@ -253,3 +331,4 @@ public final class OptimizatorRuntime {
         double limit = OptimizatorConfig.farEntityCullDistance;
         return distance > limit * limit;
     }
+}
